@@ -6,3 +6,8 @@ This crate is work in progress.
 
 ## Features
 
+## Acknowledgements
+
+* Inspiration was provided by Pikumas excellent [Raycaster Tutorial Series](https://pikuma.com/courses/raycasting-engine-tutorial-algorithm-javascript).
+* The basic idea of the raycaster is based on the [Lodev's Raycaster Tutorial](https://lodev.org/cgtutor/raycasting.html).
+

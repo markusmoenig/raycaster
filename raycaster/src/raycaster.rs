@@ -161,7 +161,7 @@ impl Raycaster {
         self.time = self.get_time();
 
         let frame_time = (self.time - self.old_time) as f32 / 1000.0;
-        println!("fps {}", 1.0 / frame_time); //FPS counter
+        // println!("fps {}", 1.0 / frame_time); //FPS counter
 
         self.move_speed = frame_time * 5.0; //the constant value is in squares/second
         self.rot_speed = frame_time * 3.0;

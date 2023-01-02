@@ -37,11 +37,29 @@ use tao::{
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use std::path::PathBuf;
+use std::fs::File;
+
+/// Get the time in ms
 fn get_time() -> u128 {
     let stop = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards");
         stop.as_millis()
+}
+
+/// Load an image from a file
+fn load(file_name: &PathBuf) -> (Vec<u8>, u32, u32) {
+
+    let decoder = png::Decoder::new(File::open(file_name).unwrap());
+    if let Ok(mut reader) = decoder.read_info() {
+        let mut buf = vec![0; reader.output_buffer_size()];
+        let info = reader.next_frame(&mut buf).unwrap();
+        let bytes = &buf[..info.buffer_size()];
+
+        return (bytes.to_vec(), info.width, info.height);
+    }
+    (vec![], 0 , 0)
 }
 
 fn main() -> Result<(), Error> {
@@ -74,9 +92,14 @@ fn main() -> Result<(), Error> {
         Pixels::new(width as u32, height as u32, surface_texture)?
     };
 
+    // Load the tilemap
+
+    let (tilemap, tilemap_width, tilemap_height) = load(&PathBuf::from("resources/tilemap.png"));
+
     // Init the world map
 
     let mut world = WorldMap::new();
+    let _image_index = world.add_image(tilemap, tilemap_width, tilemap_height);
 
     world.set_wall(-5, 5);
 

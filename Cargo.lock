@@ -347,6 +347,7 @@ dependencies = [
  "fontdue",
  "log",
  "pixels",
+ "png",
  "raycaster",
  "tao",
 ]

@@ -1,0 +1,9 @@
+[workspace]
+
+members = [
+    "raycaster",
+    "demo"
+]
+
+#edition = "2021"
+resolver = "2"

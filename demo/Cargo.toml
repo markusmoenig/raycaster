@@ -1,0 +1,12 @@
+[package]
+name = "demo"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+env_logger = "0.10"
+log = "0.4"
+pixels = "0.11.0"
+tao = "0.15.8"
+fontdue = "0.7.2"
+raycaster = { path = "../raycaster" }

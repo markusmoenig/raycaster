@@ -99,9 +99,15 @@ fn main() -> Result<(), Error> {
     // Init the world map
 
     let mut world = WorldMap::new();
-    let _image_index = world.add_image(tilemap, tilemap_width, tilemap_height);
+    let image_id = world.add_image(tilemap, tilemap_width, tilemap_height);
 
-    world.set_wall(-5, 5);
+    let calc_tile_rect = |x: usize, y: usize, tile_size: usize| -> (usize, usize, usize, usize) {
+        (x * tile_size * 4, y * tile_size * tilemap_width as usize * 4, tile_size, tile_size)
+    };
+
+    let wall = Tile::textured(image_id, calc_tile_rect(20, 4, 24));
+
+    world.set_wall(-5, 5, wall.clone());
 
     let mut caster = Raycaster::new(world, width, height);
 

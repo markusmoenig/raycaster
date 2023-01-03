@@ -59,27 +59,27 @@ impl Raycaster {
             let ray_dir_x = dir.x + plane.x * camera_x;
             let ray_dir_y = dir.y + plane.y * camera_x;
 
-            //which box of the map we're in
+            // which box of the map we're in
             let mut map_x = pos.x as i32;
             let mut map_y = pos.y as i32;
 
-            //length of ray from current position to next x or y-side
+            // length of ray from current position to next x or y-side
             let mut side_dist_x;
             let mut side_dist_y;
 
-            //length of ray from one x or y-side to next x or y-side
+            // length of ray from one x or y-side to next x or y-side
             let delta_dist_x = if ray_dir_x == 0.0 { f32::MAX } else { (1.0 / ray_dir_x).abs() };
             let delta_dist_y = if ray_dir_y == 0.0 { f32::MAX } else { (1.0 / ray_dir_y).abs() };
             let perp_wall_dist;
 
-            //what direction to step in x or y-direction (either +1 or -1)
+            // what direction to step in x or y-direction (either +1 or -1)
             let step_x;
             let step_y;
 
             let mut hit = false; //was there a wall hit?
             let mut side = 0; //was a NS or a EW wall hit?
 
-            //calculate step and initial sideDist
+            // calculate step and initial sideDist
             if ray_dir_x < 0.0 {
                 step_x = -1;
                 side_dist_x = (pos.x - map_x as f32) * delta_dist_x;
@@ -96,9 +96,9 @@ impl Raycaster {
                 side_dist_y = (map_y as f32 + 1.0 - pos.y) * delta_dist_y;
             }
 
-            //perform DDA
+            // perform DDA
             for _ in 0..20 {
-                //jump to next map square, either in x-direction, or in y-direction
+                // jump to next map square, either in x-direction, or in y-direction
                 if side_dist_x < side_dist_y {
                     side_dist_x += delta_dist_x;
                     map_x += step_x;
@@ -108,7 +108,8 @@ impl Raycaster {
                     map_y += step_y;
                     side = 1;
                 }
-                //Check if ray has hit a wall
+
+                // check if ray has hit a wall
                 if self.world.has_wall(map_x, map_y) == true {
                     hit = true;
                     break;
@@ -117,19 +118,17 @@ impl Raycaster {
 
             if hit {
 
-                //println!("x: {}. Hit at {}, {}", x, map_x, map_y);
-
-                //Calculate distance projected on camera direction (Euclidean distance would give fisheye effect!)
+                // calculate distance projected on camera direction (Euclidean distance would give fisheye effect!)
                 if side == 0 {
                     perp_wall_dist = side_dist_x - delta_dist_x;
                 } else {
                     perp_wall_dist = side_dist_y - delta_dist_y;
                 }
 
-                //Calculate height of line to draw on screen
+                // calculate height of line to draw on screen
                 let line_height = (height as f32 / perp_wall_dist) as i32;
 
-                //calculate lowest and highest pixel to fill in current stripe
+                // calculate lowest and highest pixel to fill in current stripe
                 let mut draw_start = -line_height / 2 + height / 2;
                 if draw_start < 0 {
                     draw_start = 0;
@@ -140,8 +139,67 @@ impl Raycaster {
                     draw_end = height - 1;
                 }
 
-                //println!("x: {}, draw_start: {}, draw_end: {}", x, draw_start, draw_end);
+                if let Some(tile) = self.world.get_wall(map_x, map_y) {
 
+                    if let Some((image_id, rect)) = tile.texture {
+
+                        // texturing calculations
+
+                        // calculate value of wall_x
+                        let mut wall_x; //where exactly the wall was hit
+                        if side == 0 {
+                            wall_x = pos.y + perp_wall_dist * ray_dir_y;
+                        } else {
+                            wall_x = pos.x + perp_wall_dist * ray_dir_x;
+                        }
+                        wall_x -= wall_x.floor();
+
+                        // x coordinate on the texture
+                        let mut tex_x = (wall_x * rect.2 as f32) as usize;
+                        if side == 0 && ray_dir_x > 0.0 {
+                            tex_x = rect.2 - tex_x - 1;
+                        }
+                        if side == 1 && ray_dir_y < 0.0 {
+                            tex_x = rect.2 - tex_x - 1;
+                        }
+
+                        // How much to increase the texture coordinate per screen pixel
+                        let step = 1.0 * rect.3 as f32 / line_height as f32;
+
+                        let mut tex_pos = (draw_start - height / 2 + line_height / 2) as f32 * step;
+
+                        if let Some((tex_data, tex_width, _tex_height)) = self.world.get_image(image_id) {
+                            let off_x = x * 4;
+                            for y in draw_start..draw_end {
+
+                                let tex_off = rect.0 + tex_x * 4 + rect.1 + ((tex_pos as usize) * *tex_width as usize * 4);
+
+                                let off = off_x + y as usize * 4 * self.width;
+                                frame[off] = tex_data[tex_off];
+                                frame[off + 1] = tex_data[tex_off + 1];
+                                frame[off + 2] = tex_data[tex_off + 2];
+                                frame[off + 3] = tex_data[tex_off + 3];
+
+                                tex_pos += step;
+                            }
+                        }
+                        /*
+                        // Starting texture coordinate
+                        double texPos = (drawStart - h / 2 + lineHeight / 2) * step;
+                        for(int y = drawStart; y<drawEnd; y++)
+                        {
+                            // Cast the texture coordinate to integer, and mask with (texHeight - 1) in case of overflow
+                            int texY = (int)texPos & (texHeight - 1);
+                            texPos += step;
+                            Uint32 color = texture[texNum][texHeight * texY + texX];
+                            //make color darker for y-sides: R, G and B byte each divided through two with a "shift" and an "and"
+                            if(side == 1) color = (color >> 1) & 8355711;
+                            buffer[y][x] = color;
+                        }*/
+                    }
+                }
+
+                /* color
                 let off_x = x * 4;
 
                 for y in draw_start..draw_end {
@@ -151,6 +209,7 @@ impl Raycaster {
                     frame[off + 2] = 255;
                     frame[off + 3] = 255;
                 }
+                */
             }
         }
 

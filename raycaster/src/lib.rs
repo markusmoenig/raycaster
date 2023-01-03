@@ -1,8 +1,10 @@
 pub mod raycaster;
 pub mod worldmap;
 pub mod math;
+pub mod tile;
 
 pub use crate::worldmap::WorldMap as WorldMap;
+pub use crate::tile::Tile as Tile;
 
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum WidgetKey {
@@ -24,4 +26,5 @@ pub mod prelude {
     pub use crate::raycaster::Raycaster;
     pub use crate::worldmap::WorldMap;
     pub use crate::math::vec2;
+    pub use crate::tile::Tile;
 }

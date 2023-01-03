@@ -143,7 +143,9 @@ fn main() -> Result<(), Error> {
     }
 
     world.set_ceiling_tile(Tile::textured(image_id, calc_tile_rect(23, 14, 24)));
+    //world.set_ceiling_tile(Tile::colored([100, 100, 100, 255]));
     world.set_floor_tile(Tile::textured(image_id, calc_tile_rect(21, 14, 24)));
+    // world.set_floor_tile(Tile::colored([50, 50, 50, 255]));
 
     let mut caster = Raycaster::new();
     caster.set_pos(10, 7);

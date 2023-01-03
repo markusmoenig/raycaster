@@ -33,7 +33,7 @@ impl Raycaster {
     /// Renders the world map into the frame inside the given rectangle
     pub fn render(&mut self, frame: &mut [u8], rect: (usize, usize, usize, usize), stride: usize, world: &WorldMap) {
 
-        //let start = self.get_time();
+        let start = self.get_time();
 
         let width = rect.2 as i32;
         let height = rect.3 as i32;
@@ -90,9 +90,9 @@ impl Raycaster {
 
         // Texture the ceiling and floor
 
-        if ceiling_is_textured && floor_is_textured {
+        if ceiling_is_textured || floor_is_textured {
 
-            for y in rect.1..rect.3 {
+            for y in rect.1 + rect.3 / 2..rect.3 {
 
                 // rayDir for leftmost ray (x = 0) and rightmost ray (x = w)
                 let ray_dir_x0 = dir.x - plane.x;
@@ -125,25 +125,15 @@ impl Raycaster {
                     let cell_x = floor_x.floor();
                     let cell_y = floor_y.floor();
 
-                    if y >= rect.1 + rect.3 / 2 {
-                        if let Some(floor) = floor_tile {
-                            if let Some((image_id, rect)) = floor.texture {
-                                let tex_x = ((rect.2 as f32 * (floor_x - cell_x)) as usize).clamp(0, rect.2 - 1);
-                                let tex_y = ((rect.3 as f32 * (floor_y - cell_y)) as usize).clamp(0, rect.3 - 1);
+                    if let Some(floor) = floor_tile {
+                        if let Some((image_id, rect)) = floor.texture {
+                            let tex_x = ((rect.2 as f32 * (floor_x - cell_x)) as usize).clamp(0, rect.2 - 1);
+                            let tex_y = ((rect.3 as f32 * (floor_y - cell_y)) as usize).clamp(0, rect.3 - 1);
 
-                                if let Some((tex_data, tex_width, _tex_height)) = world.get_image(image_id) {
-
-                                    let tex_off = rect.0 + tex_x * 4 + rect.1 + ((tex_y as usize) * *tex_width as usize * 4);
-
-                                    let off = x * 4 + y * 4 * stride;
-                                    frame[off] = tex_data[tex_off];
-                                    frame[off + 1] = tex_data[tex_off + 1];
-                                    frame[off + 2] = tex_data[tex_off + 2];
-                                    frame[off + 3] = tex_data[tex_off + 3];
-                                }
-
-                                floor_x += floor_step_x;
-                                floor_y += floor_step_y;
+                            if let Some((tex_data, tex_width, _tex_height)) = world.get_image(image_id) {
+                                let tex_off = rect.0 + tex_x * 4 + rect.1 + ((tex_y as usize) * *tex_width as usize * 4);
+                                let off = x * 4 + y * 4 * stride;
+                                frame[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
                             }
                         }
                     }
@@ -154,42 +144,15 @@ impl Raycaster {
                             let tex_y = ((tex_rect.3 as f32 * (floor_y - cell_y)) as usize).clamp(0, tex_rect.3 - 1);
 
                             if let Some((tex_data, tex_width, _tex_height)) = world.get_image(image_id) {
-
                                 let tex_off = tex_rect.0 + tex_x * 4 + tex_rect.1 + ((tex_y as usize) * *tex_width as usize * 4);
-
                                 let off = x * 4 + (rect.3 - y - 1) * 4 * stride;
-                                frame[off] = tex_data[tex_off];
-                                frame[off + 1] = tex_data[tex_off + 1];
-                                frame[off + 2] = tex_data[tex_off + 2];
-                                frame[off + 3] = tex_data[tex_off + 3];
+                                frame[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
                             }
                         }
                     }
 
-                    /*
-
-                    // get the texture coordinate from the fractional part
-                    let tx = (int)(texWidth * (floorX - cellX)) & (texWidth - 1);
-                    let ty = (int)(texHeight * (floorY - cellY)) & (texHeight - 1);
-
-                    floorX += floorStepX;
-                    floorY += floorStepY;
-
-                    // choose texture and draw the pixel
-                    int floorTexture = 3;
-                    int ceilingTexture = 6;
-                    Uint32 color;
-
-                    // floor
-                    color = texture[floorTexture][texWidth * ty + tx];
-                    color = (color >> 1) & 8355711; // make a bit darker
-                    buffer[y][x] = color;
-
-                    //ceiling (symmetrical, at screenHeight - y - 1 instead of y)
-                    color = texture[ceilingTexture][texWidth * ty + tx];
-                    color = (color >> 1) & 8355711; // make a bit darker
-                    buffer[screenHeight - y - 1][x] = color;
-                    */
+                    floor_x += floor_step_x;
+                    floor_y += floor_step_y;
                 }
             }
         }
@@ -315,14 +278,9 @@ impl Raycaster {
                         if let Some((tex_data, tex_width, _tex_height)) = world.get_image(image_id) {
                             let off_x = x * 4;
                             for y in draw_start..draw_end {
-
                                 let tex_off = rect.0 + tex_x * 4 + rect.1 + ((tex_pos as usize) * *tex_width as usize * 4);
-
                                 let off = off_x + y as usize * 4 * stride;
-                                frame[off] = tex_data[tex_off];
-                                frame[off + 1] = tex_data[tex_off + 1];
-                                frame[off + 2] = tex_data[tex_off + 2];
-                                frame[off + 3] = tex_data[tex_off + 3];
+                                frame[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
 
                                 tex_pos += step;
                             }
@@ -357,8 +315,8 @@ impl Raycaster {
             }
         }
 
-        //let stop = self.get_time();
-        //println!("tick time {:?}", stop - start);
+        let stop = self.get_time();
+        println!("tick time {:?}", stop - start);
 
         self.old_time = self.time;
         self.time = self.get_time();

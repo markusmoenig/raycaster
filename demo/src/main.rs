@@ -35,7 +35,7 @@ use tao::{
     keyboard::{Key},
 };
 
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, Duration, UNIX_EPOCH};
 
 use std::path::PathBuf;
 use std::fs::File;
@@ -62,7 +62,7 @@ fn load(file_name: &PathBuf) -> (Vec<u8>, u32, u32) {
     (vec![], 0 , 0)
 }
 
-const GAME_TICK_IN_MS : u128 = 1000 / 60;
+const GAME_TICK_IN_MS : u128 = 1000 / 30;
 
 fn main() -> Result<(), Error> {
 
@@ -235,6 +235,9 @@ fn main() -> Result<(), Error> {
                     // println!("tick time {:?}", stop - start);
                     window.request_redraw();
                     game_tick_timer = curr_time;
+                } else {
+                    let t = game_tick_timer + GAME_TICK_IN_MS - curr_time;
+                    std::thread::sleep(Duration::from_millis(t as u64));
                 }
             }
 

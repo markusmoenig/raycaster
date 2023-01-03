@@ -33,7 +33,7 @@ impl Raycaster {
     /// Renders the world map into the frame inside the given rectangle
     pub fn render(&mut self, frame: &mut [u8], rect: (usize, usize, usize, usize), stride: usize, world: &WorldMap) {
 
-        let start = self.get_time();
+        // let start = self.get_time();
 
         let width = rect.2 as i32;
         let height = rect.3 as i32;
@@ -315,8 +315,8 @@ impl Raycaster {
             }
         }
 
-        let stop = self.get_time();
-        println!("tick time {:?}", stop - start);
+        // let stop = self.get_time();
+        // println!("tick time {:?}", stop - start);
 
         self.old_time = self.time;
         self.time = self.get_time();

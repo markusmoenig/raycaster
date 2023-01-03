@@ -62,10 +62,12 @@ fn load(file_name: &PathBuf) -> (Vec<u8>, u32, u32) {
     (vec![], 0 , 0)
 }
 
+const GAME_TICK_IN_MS : u128 = 1000 / 60;
+
 fn main() -> Result<(), Error> {
 
-    let width     : usize = 1280;
-    let height    : usize = 800;
+    let mut width     : usize = 1280;
+    let mut height    : usize = 800;
 
     env_logger::init();
     let event_loop = EventLoop::new();
@@ -105,16 +107,51 @@ fn main() -> Result<(), Error> {
         (x * tile_size * 4, y * tile_size * tilemap_width as usize * 4, tile_size, tile_size)
     };
 
-    let wall = Tile::textured(image_id, calc_tile_rect(20, 4, 24));
+    let tiles = vec![
+        Tile::textured(image_id, calc_tile_rect(20, 4, 24)), // Wall
+        Tile::textured(image_id, calc_tile_rect(23, 4, 24)), // Wall Gitter
+        Tile::textured(image_id, calc_tile_rect(43, 1, 24)), // Door
+        Tile::textured(image_id, calc_tile_rect(22, 4, 24)), // Wall Cross
+    ];
 
-    world.set_wall(-5, 5, wall.clone());
+    let map = vec![
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+        1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+        1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+        1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+        1, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+        1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+        1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+        1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+        1, 1, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    ];
 
-    let mut caster = Raycaster::new(world, width, height);
+    for y in 0..map.len() / 20 {
+        for x in 0..20 {
+            let tile = map[y * 20 + x];
+            if tile >= 1 {
+                world.set_wall(x as i32, y as i32, tiles[tile - 1].clone());
+            }
+        }
+    }
+
+    world.set_ceiling_tile(Tile::textured(image_id, calc_tile_rect(23, 14, 24)));
+    world.set_floor_tile(Tile::textured(image_id, calc_tile_rect(21, 14, 24)));
+
+    let mut caster = Raycaster::new();
+    caster.set_pos(10, 7);
+
+    // Set up the game loop
 
     let mut coords = PhysicalPosition::new(0.0, 0.0);
     // let mut is_pressed = false;
-
-    const GAME_TICK_IN_MS : u128 = 1000 / 30;
 
     let mut game_tick_timer : u128 = 0;
 
@@ -139,9 +176,8 @@ fn main() -> Result<(), Error> {
                     _ = pixels.resize_surface(size.width, size.height);
                     let scale = window.scale_factor() as u32;
                     _ = pixels.resize_buffer(size.width / scale, size.height / scale);
-                    let width = size.width as usize / scale as usize;
-                    let height = size.height as usize / scale as usize;
-                    caster.resize(width, height);
+                    width = size.width as usize / scale as usize;
+                    height = size.height as usize / scale as usize;
                     window.request_redraw();
                 }
 
@@ -168,10 +204,10 @@ fn main() -> Result<(), Error> {
                             caster.turn_right();
                         },
                         Key::ArrowUp => {
-                            caster.go_forward();
+                            caster.go_forward(&world);
                         },
                         Key::ArrowDown => {
-                            caster.go_backward();
+                            caster.go_backward(&world);
                         },
                         _ => (),
                     }
@@ -204,7 +240,7 @@ fn main() -> Result<(), Error> {
             Event::RedrawRequested(_) => {
 
                 let frame = pixels.get_frame_mut();
-                caster.render(&mut frame[..]);
+                caster.render(&mut frame[..], (0, 0, width, height), width, &world);
 
                 if pixels
                     .render()

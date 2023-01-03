@@ -4,6 +4,9 @@ pub struct WorldMap {
     walls               : FxHashMap<(i32, i32), Tile>,
 
     images              : Vec<(Vec<u8>, u32, u32)>,
+
+    ceiling_tile        : Option<Tile>,
+    floor_tile          : Option<Tile>,
 }
 
 /// The world map
@@ -13,6 +16,9 @@ impl WorldMap {
         Self {
             walls       : FxHashMap::default(),
             images      : vec![],
+
+            ceiling_tile: None,
+            floor_tile  : None,
         }
     }
 
@@ -29,6 +35,26 @@ impl WorldMap {
     /// Gets the wall at the given position
     pub fn get_wall(&self, x: i32, y: i32) -> Option<&Tile> {
         self.walls.get(&(x, y))
+    }
+
+    /// Sets the ceiling tile
+    pub fn set_ceiling_tile(&mut self, tile: Tile) {
+        self.ceiling_tile = Some(tile);
+    }
+
+    /// Gets the ceiling tile
+    pub fn get_ceiling_tile(&self) -> Option<&Tile> {
+        self.ceiling_tile.as_ref()
+    }
+
+    /// Sets the floor tile
+    pub fn set_floor_tile(&mut self, tile: Tile) {
+        self.floor_tile = Some(tile);
+    }
+
+    /// Gets the floor tile
+    pub fn get_floor_tile(&self) -> Option<&Tile> {
+        self.floor_tile.as_ref()
     }
 
     /// Adds an image to the list of images

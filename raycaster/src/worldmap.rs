@@ -5,6 +5,8 @@ pub struct WorldMap {
 
     images              : Vec<(Vec<u8>, u32, u32)>,
 
+    pub sprites         : Vec<Sprite>,
+
     ceiling_tile        : Option<Tile>,
     floor_tile          : Option<Tile>,
 }
@@ -16,6 +18,8 @@ impl WorldMap {
         Self {
             walls       : FxHashMap::default(),
             images      : vec![],
+
+            sprites     : vec![],
 
             ceiling_tile: None,
             floor_tile  : None,
@@ -67,6 +71,11 @@ impl WorldMap {
     /// Gets the image at the given index
     pub fn get_image(&self, index: usize) -> Option<&(Vec<u8>, u32, u32)> {
         self.images.get(index)
+    }
+
+    /// Adds a sprite to the list of sprites
+    pub fn add_sprite(&mut self, sprite: Sprite) {
+        self.sprites.push(sprite);
     }
 
 }

@@ -147,6 +147,9 @@ fn main() -> Result<(), Error> {
     world.set_floor_tile(Tile::textured(image_id, calc_tile_rect(21, 14, 24)));
     // world.set_floor_tile(Tile::colored([50, 50, 50, 255]));
 
+    let sprite = Sprite::new(7.0, 7.0, Tile::textured(image_id, calc_tile_rect(50, 8, 24)));
+    world.add_sprite(sprite);
+
     let mut caster = Raycaster::new();
     caster.set_pos(9, 7);
     caster.set_fog([10, 10, 10, 255], 6.0);

@@ -8,12 +8,12 @@ This crate is work in progress.
 
 ## Features
 
-* Textured walls, ceiling and floor
+* Textured or colored walls, ceiling and floor
 * Adjustable fog color and distance
+* Sprites
 
 ## Todo
 
-* Sprite rendering
 * Doors
 * Animated textures
 * Lighting

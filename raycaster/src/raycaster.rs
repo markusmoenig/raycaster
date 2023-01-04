@@ -187,8 +187,9 @@ impl Raycaster {
             }
         }
 
-
         // Render the walls
+
+        let mut z_buffer = vec![f32::MAX; rect.2 as usize];
 
         for x in rect.0..rect.2 {
 
@@ -344,6 +345,9 @@ impl Raycaster {
                     }
                 }
 
+                // perpendicular distance is stored in the z-buffer for sprite casting
+                z_buffer[x] = perp_wall_dist;
+
                 /* color
                 let off_x = x * 4;
 
@@ -355,6 +359,86 @@ impl Raycaster {
                     frame[off + 3] = 255;
                 }
                 */
+            }
+        }
+
+        // Render the sprites
+
+        for sprite in &world.sprites {
+
+            // translate sprite position to relative to camera
+            let sprite_x = sprite.x - pos.x;
+            let sprite_y = sprite.y - pos.y;
+
+            // transform sprite with the inverse camera matrix
+            // [ planeX   dirX ] -1                                       [ dirY      -dirX ]
+            // [               ]       =  1/(planeX*dirY-dirX*planeY) *   [                 ]
+            // [ planeY   dirY ]                                          [ -planeY  planeX ]
+
+            let inv_det = 1.0 / (plane.x * dir.y - dir.x * plane.y); //required for correct matrix multiplication
+
+            let transform_x = inv_det * (dir.y * sprite_x - dir.x * sprite_y);
+            let transform_y = inv_det * (-plane.y * sprite_x + plane.x * sprite_y); //this is actually the depth inside the screen, that what Z is in 3D
+
+            let mix_factor = transform_y / self.fog_distance;
+
+            let sprite_screen_x = ((width as f32 / 2.0) * (1.0 + transform_x / transform_y)) as i32;
+
+            // calculate height of the sprite on screen
+            let sprite_height = ((height as f32 / (transform_y)) as i32).abs(); //using 'transformY' instead of the real distance prevents fisheye
+            // calculate lowest and highest pixel to fill in current stripe
+            let mut draw_start_y = -sprite_height / 2 + height / 2;
+            if draw_start_y < 0 { draw_start_y = 0; }
+            let mut draw_end_y = sprite_height / 2 + height / 2;
+            if draw_end_y >= height { draw_end_y = height - 1; }
+
+            // calculate width of the sprite
+            let sprite_width = ((height as f32 / (transform_y)) as i32).abs();
+            let mut draw_start_x = -sprite_width / 2 + sprite_screen_x;
+            if draw_start_x < 0 { draw_start_x = 0; }
+            let mut draw_end_x = sprite_width / 2 + sprite_screen_x;
+            if draw_end_x >= width { draw_end_x = width - 1; }
+
+            if let Some((image_id, tex_rect)) = sprite.tile.texture {
+                if let Some((tex_data, tex_width, _tex_height)) = world.get_image(image_id) {
+
+                    // loop through every vertical stripe of the sprite on screen
+                    for stripe in draw_start_x..draw_end_x {
+                        let tex_x = ((256 * (stripe - (-sprite_width / 2 + sprite_screen_x)) * tex_rect.2 as i32 / sprite_width) / 256) as usize;
+
+                        // the conditions in the if are:
+                        // 1) it's in front of camera plane so you don't see things behind you
+                        // 2) it's on the screen (left)
+                        // 3) it's on the screen (right)
+                        // 4) ZBuffer, with perpendicular distance
+
+                        if transform_y > 0.0 && stripe > 0 && stripe < width && transform_y < z_buffer[stripe as usize] {
+                            for y in draw_start_y as usize .. draw_end_y as usize {
+
+                                let d = (y) * 256 - height as usize * 128 + sprite_height as usize * 128; //256 and 128 factors to avoid floats
+                                let tex_y = (((d * tex_rect.3) / sprite_height as usize) / 256) as usize;
+
+                                let tex_off = tex_rect.0 + tex_x * 4 + tex_rect.1 + ((tex_y as usize) * *tex_width as usize * 4);
+                                let off = (rect.0 + stripe as usize) * 4 + (rect.1 + y as usize) * 4 * stride;
+
+                                if mix_factor <= 0.0 {
+                                    frame[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
+                                } else
+                                if mix_factor >= 1.0 {
+                                    frame[off..off+4].copy_from_slice(&self.fog_color);
+                                } else {
+                                    let mut wall_color : [u8;4] = [0, 0, 0, 0];
+                                    wall_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
+                                    let tex_alpha = tex_data[tex_off+3] as f32 / 255.0;
+                                    if tex_alpha > 0.0 {
+                                        let color = self.mix_color(&wall_color, &self.fog_color, mix_factor * tex_alpha);
+                                        frame[off..off+4].copy_from_slice(&color);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 

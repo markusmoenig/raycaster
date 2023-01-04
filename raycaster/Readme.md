@@ -1,7 +1,5 @@
 # A Rust based Raycaster engine
 
-![Image](images/demo.png)
-
 This will be a full featured raycaster engine to produce games similar to Wolfenstein 3D. I needed it to create 3D dungeons for my retro RPG creator [Eldiron](https://github.com/markusmoenig/Eldiron).
 
 The caster renders into a ```Vec<u8>``` frame. The only dependency of the crate right now is [rustc-hash](https://crates.io/crates/rustc-hash) for a fast HashMap.

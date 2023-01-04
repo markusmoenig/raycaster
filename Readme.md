@@ -9,6 +9,7 @@ This crate is work in progress.
 ## Features
 
 * Textured walls, ceiling and floor
+* Adjustable fog color and distance
 
 ## Todo
 

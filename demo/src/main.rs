@@ -110,7 +110,7 @@ fn main() -> Result<(), Error> {
     let tiles = vec![
         Tile::textured(image_id, calc_tile_rect(20, 4, 24)), // Wall
         Tile::textured(image_id, calc_tile_rect(23, 4, 24)), // Wall Gitter
-        Tile::textured(image_id, calc_tile_rect(43, 1, 24)), // Door
+        Tile::textured(image_id, calc_tile_rect(25, 14, 24)),// Door
         Tile::textured(image_id, calc_tile_rect(22, 4, 24)), // Wall Cross
     ];
 
@@ -120,10 +120,10 @@ fn main() -> Result<(), Error> {
         1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
         1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
         1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+        1, 0, 0, 1, 0, 1, 2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
         1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-        1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-        1, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-        1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+        1, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+        1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
         1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
         1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
         1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
@@ -142,13 +142,14 @@ fn main() -> Result<(), Error> {
         }
     }
 
-    world.set_ceiling_tile(Tile::textured(image_id, calc_tile_rect(23, 14, 24)));
+    world.set_ceiling_tile(Tile::textured(image_id, calc_tile_rect(9, 4, 24)));
     //world.set_ceiling_tile(Tile::colored([100, 100, 100, 255]));
     world.set_floor_tile(Tile::textured(image_id, calc_tile_rect(21, 14, 24)));
     // world.set_floor_tile(Tile::colored([50, 50, 50, 255]));
 
     let mut caster = Raycaster::new();
-    caster.set_pos(10, 7);
+    caster.set_pos(9, 7);
+    caster.set_fog([10, 10, 10, 255], 6.0);
 
     // Set up the game loop
 

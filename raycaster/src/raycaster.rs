@@ -5,6 +5,9 @@ pub struct Raycaster {
     time                    : u128,
     old_time                : u128,
 
+    fog_color               : [u8;4],
+    fog_distance            : f32,
+
     move_speed              : f32,
     rot_speed               : f32,
 
@@ -22,6 +25,9 @@ impl Raycaster {
             dir             : vec2::new(-1.0, 0.0),
             plane           : vec2::new(0.0, 0.66),
 
+            fog_color       : [0, 0, 0, 255],
+            fog_distance    : 6.0,
+
             time            : 0,
             old_time        : 0,
 
@@ -33,7 +39,7 @@ impl Raycaster {
     /// Renders the world map into the frame inside the given rectangle
     pub fn render(&mut self, frame: &mut [u8], rect: (usize, usize, usize, usize), stride: usize, world: &WorldMap) {
 
-        // let start = self.get_time();
+        let start = self.get_time();
 
         let width = rect.2 as i32;
         let height = rect.3 as i32;
@@ -119,6 +125,8 @@ impl Raycaster {
                 let mut floor_x = pos.x + row_distance * ray_dir_x0;
                 let mut floor_y = pos.y + row_distance * ray_dir_y0;
 
+                let mix_factor = row_distance / self.fog_distance;
+
                 for x in rect.0..rect.2 {
 
                     // the cell coord is simply got from the integer parts of floorX and floorY
@@ -133,7 +141,18 @@ impl Raycaster {
                             if let Some((tex_data, tex_width, _tex_height)) = world.get_image(image_id) {
                                 let tex_off = rect.0 + tex_x * 4 + rect.1 + ((tex_y as usize) * *tex_width as usize * 4);
                                 let off = x * 4 + y * 4 * stride;
-                                frame[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
+
+                                if mix_factor <= 0.0 {
+                                    frame[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
+                                } else
+                                if mix_factor >= 1.0 {
+                                    frame[off..off+4].copy_from_slice(&self.fog_color);
+                                } else {
+                                    let mut floor_color : [u8;4] = [0, 0, 0, 0];
+                                    floor_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
+                                    let color = self.mix_color(&floor_color, &self.fog_color, mix_factor);
+                                    frame[off..off+4].copy_from_slice(&color);
+                                }
                             }
                         }
                     }
@@ -146,7 +165,18 @@ impl Raycaster {
                             if let Some((tex_data, tex_width, _tex_height)) = world.get_image(image_id) {
                                 let tex_off = tex_rect.0 + tex_x * 4 + tex_rect.1 + ((tex_y as usize) * *tex_width as usize * 4);
                                 let off = x * 4 + (rect.3 - y - 1) * 4 * stride;
-                                frame[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
+
+                                if mix_factor <= 0.0 {
+                                    frame[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
+                                } else
+                                if mix_factor >= 1.0 {
+                                    frame[off..off+4].copy_from_slice(&self.fog_color);
+                                } else {
+                                    let mut ceiling_color : [u8;4] = [0, 0, 0, 0];
+                                    ceiling_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
+                                    let color = self.mix_color(&ceiling_color, &self.fog_color, mix_factor);
+                                    frame[off..off+4].copy_from_slice(&color);
+                                }
                             }
                         }
                     }
@@ -246,6 +276,8 @@ impl Raycaster {
                     draw_end = height - 1;
                 }
 
+                let mix_factor = perp_wall_dist / self.fog_distance;
+
                 if let Some(tile) = world.get_wall(map_x, map_y) {
 
                     if let Some((image_id, rect)) = tile.texture {
@@ -280,7 +312,18 @@ impl Raycaster {
                             for y in draw_start..draw_end {
                                 let tex_off = rect.0 + tex_x * 4 + rect.1 + ((tex_pos as usize) * *tex_width as usize * 4);
                                 let off = off_x + y as usize * 4 * stride;
-                                frame[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
+
+                                if mix_factor <= 0.0 {
+                                    frame[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
+                                } else
+                                if mix_factor >= 1.0 {
+                                    frame[off..off+4].copy_from_slice(&self.fog_color);
+                                } else {
+                                    let mut wall_color : [u8;4] = [0, 0, 0, 0];
+                                    wall_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
+                                    let color = self.mix_color(&wall_color, &self.fog_color, mix_factor);
+                                    frame[off..off+4].copy_from_slice(&color);
+                                }
 
                                 tex_pos += step;
                             }
@@ -315,8 +358,8 @@ impl Raycaster {
             }
         }
 
-        // let stop = self.get_time();
-        // println!("tick time {:?}", stop - start);
+        let stop = self.get_time();
+        println!("tick time {:?}", stop - start);
 
         self.old_time = self.time;
         self.time = self.get_time();
@@ -378,12 +421,27 @@ impl Raycaster {
         self.pos.y = y as f32;
     }
 
+    /// Set the fog color and distance
+    pub fn set_fog(&mut self, color: [u8; 4], distance: f32) {
+        self.fog_color = color;
+        self.fog_distance = distance;
+    }
+
     /// Gets the current time in milliseconds
     fn get_time(&self) -> u128 {
         let stop = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("Time went backwards");
             stop.as_millis()
+    }
+
+    #[inline(always)]
+    /// Mix two colors
+    fn mix_color(&self, a: &[u8;4], b: &[u8;4], v: f32) -> [u8; 4] {
+        [   (((1.0 - v) * (a[0] as f32 / 255.0) + b[0] as f32 / 255.0 * v) * 255.0) as u8,
+            (((1.0 - v) * (a[1] as f32 / 255.0) + b[1] as f32 / 255.0 * v) * 255.0) as u8,
+            (((1.0 - v) * (a[2] as f32 / 255.0) + b[2] as f32 / 255.0 * v) * 255.0) as u8,
+        255]
     }
 
 }

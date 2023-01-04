@@ -1,14 +1,17 @@
 use crate::prelude::*;
 
 pub struct WorldMap {
-    walls               : FxHashMap<(i32, i32), Tile>,
+    walls                   : FxHashMap<(i32, i32), Tile>,
 
-    images              : Vec<(Vec<u8>, u32, u32)>,
+    images                  : Vec<(Vec<u8>, u32, u32)>,
 
-    pub sprites         : Vec<Sprite>,
+    pub sprites             : Vec<Sprite>,
 
-    ceiling_tile        : Option<Tile>,
-    floor_tile          : Option<Tile>,
+    ceiling_tile            : Option<Tile>,
+    floor_tile              : Option<Tile>,
+
+    pub fog_color           : [u8;4],
+    pub fog_distance        : f32,
 }
 
 /// The world map
@@ -16,13 +19,16 @@ impl WorldMap {
     pub fn new() -> Self {
 
         Self {
-            walls       : FxHashMap::default(),
-            images      : vec![],
+            walls           : FxHashMap::default(),
+            images          : vec![],
 
-            sprites     : vec![],
+            sprites         : vec![],
 
-            ceiling_tile: None,
-            floor_tile  : None,
+            ceiling_tile    : None,
+            floor_tile      : None,
+
+            fog_color       : [0, 0, 0, 255],
+            fog_distance    : 6.0,
         }
     }
 
@@ -76,6 +82,12 @@ impl WorldMap {
     /// Adds a sprite to the list of sprites
     pub fn add_sprite(&mut self, sprite: Sprite) {
         self.sprites.push(sprite);
+    }
+
+    /// Set the fog color and distance
+    pub fn set_fog(&mut self, color: [u8; 4], distance: f32) {
+        self.fog_color = color;
+        self.fog_distance = distance;
     }
 
 }

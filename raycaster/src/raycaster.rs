@@ -5,9 +5,6 @@ pub struct Raycaster {
     time                    : u128,
     old_time                : u128,
 
-    fog_color               : [u8;4],
-    fog_distance            : f32,
-
     move_speed              : f32,
     rot_speed               : f32,
 
@@ -24,9 +21,6 @@ impl Raycaster {
             pos             : vec2::new(5.0, 5.0),
             dir             : vec2::new(-1.0, 0.0),
             plane           : vec2::new(0.0, 0.66),
-
-            fog_color       : [0, 0, 0, 255],
-            fog_distance    : 6.0,
 
             time            : 0,
             old_time        : 0,
@@ -125,7 +119,7 @@ impl Raycaster {
                 let mut floor_x = pos.x + row_distance * ray_dir_x0;
                 let mut floor_y = pos.y + row_distance * ray_dir_y0;
 
-                let mix_factor = row_distance / self.fog_distance;
+                let mix_factor = row_distance / world.fog_distance;
 
                 for x in rect.0..rect.2 {
 
@@ -146,11 +140,11 @@ impl Raycaster {
                                     frame[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
                                 } else
                                 if mix_factor >= 1.0 {
-                                    frame[off..off+4].copy_from_slice(&self.fog_color);
+                                    frame[off..off+4].copy_from_slice(&world.fog_color);
                                 } else {
                                     let mut floor_color : [u8;4] = [0, 0, 0, 0];
                                     floor_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
-                                    let color = self.mix_color(&floor_color, &self.fog_color, mix_factor);
+                                    let color = self.mix_color(&floor_color, &world.fog_color, mix_factor);
                                     frame[off..off+4].copy_from_slice(&color);
                                 }
                             }
@@ -170,11 +164,11 @@ impl Raycaster {
                                     frame[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
                                 } else
                                 if mix_factor >= 1.0 {
-                                    frame[off..off+4].copy_from_slice(&self.fog_color);
+                                    frame[off..off+4].copy_from_slice(&world.fog_color);
                                 } else {
                                     let mut ceiling_color : [u8;4] = [0, 0, 0, 0];
                                     ceiling_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
-                                    let color = self.mix_color(&ceiling_color, &self.fog_color, mix_factor);
+                                    let color = self.mix_color(&ceiling_color, &world.fog_color, mix_factor);
                                     frame[off..off+4].copy_from_slice(&color);
                                 }
                             }
@@ -277,7 +271,7 @@ impl Raycaster {
                     draw_end = height - 1;
                 }
 
-                let mix_factor = perp_wall_dist / self.fog_distance;
+                let mix_factor = perp_wall_dist / world.fog_distance;
 
                 if let Some(tile) = world.get_wall(map_x, map_y) {
 
@@ -318,11 +312,11 @@ impl Raycaster {
                                     frame[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
                                 } else
                                 if mix_factor >= 1.0 {
-                                    frame[off..off+4].copy_from_slice(&self.fog_color);
+                                    frame[off..off+4].copy_from_slice(&world.fog_color);
                                 } else {
                                     let mut wall_color : [u8;4] = [0, 0, 0, 0];
                                     wall_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
-                                    let color = self.mix_color(&wall_color, &self.fog_color, mix_factor);
+                                    let color = self.mix_color(&wall_color, &world.fog_color, mix_factor);
                                     frame[off..off+4].copy_from_slice(&color);
                                 }
 
@@ -380,7 +374,7 @@ impl Raycaster {
             let transform_x = inv_det * (dir.y * sprite_x - dir.x * sprite_y);
             let transform_y = inv_det * (-plane.y * sprite_x + plane.x * sprite_y); //this is actually the depth inside the screen, that what Z is in 3D
 
-            let mix_factor = transform_y / self.fog_distance;
+            let mix_factor = transform_y / world.fog_distance;
 
             let sprite_screen_x = ((width as f32 / 2.0) * (1.0 + transform_x / transform_y)) as i32;
 
@@ -425,13 +419,13 @@ impl Raycaster {
                                     frame[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
                                 } else
                                 if mix_factor >= 1.0 {
-                                    frame[off..off+4].copy_from_slice(&self.fog_color);
+                                    frame[off..off+4].copy_from_slice(&world.fog_color);
                                 } else {
                                     let mut wall_color : [u8;4] = [0, 0, 0, 0];
                                     wall_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
                                     let tex_alpha = tex_data[tex_off+3] as f32 / 255.0;
                                     if tex_alpha > 0.0 {
-                                        let color = self.mix_color(&wall_color, &self.fog_color, mix_factor * tex_alpha);
+                                        let color = self.mix_color(&wall_color, &world.fog_color, mix_factor * tex_alpha);
                                         frame[off..off+4].copy_from_slice(&color);
                                     }
                                 }
@@ -503,12 +497,6 @@ impl Raycaster {
     pub fn set_pos(&mut self, x: i32, y: i32) {
         self.pos.x = x as f32;
         self.pos.y = y as f32;
-    }
-
-    /// Set the fog color and distance
-    pub fn set_fog(&mut self, color: [u8; 4], distance: f32) {
-        self.fog_color = color;
-        self.fog_distance = distance;
     }
 
     /// Gets the current time in milliseconds

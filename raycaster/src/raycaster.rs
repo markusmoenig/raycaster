@@ -492,141 +492,6 @@ impl Raycaster {
 
         let mut buffer = vec![0; rect.2 * rect.3 * 4];
 
-        /*
-        // Background color if no ceiling or floor tile is set
-        if ceiling_tile.is_none() || floor_tile.is_none() {
-            for y in rect.1..rect.3 {
-                for x in rect.0..rect.2 {
-                    frame[(y*stride+x)*4+0] = 0;
-                    frame[(y*stride+x)*4+1] = 0;
-                    frame[(y*stride+x)*4+2] = 0;
-                    frame[(y*stride+x)*4+3] = 255;
-                }
-            }
-        }
-
-        // Ceiling color
-        if let Some(ceiling) = ceiling_tile {
-            if let Some(color) = ceiling.color {
-                for y in rect.1..rect.3 / 2 {
-                    for x in rect.0..rect.2 {
-                        let o = (y*stride+x)*4;
-                        frame[o..o+4].copy_from_slice(&color);
-                    }
-                }
-            } else {
-                ceiling_is_textured = true;
-            }
-        }
-
-        // Floor color
-        if let Some(floor) = floor_tile {
-            if let Some(color) = floor.color {
-                for y in rect.1 + rect.3 / 2..rect.1 + rect.3 {
-                    for x in rect.0..rect.2 {
-                        let o = (y*stride+x)*4;
-                        frame[o..o+4].copy_from_slice(&color);
-                    }
-                }
-            } else {
-                floor_is_textured = true;
-            }
-        }*/
-
-        // Texture the ceiling and floor
-        /*
-        if ceiling_is_textured || floor_is_textured {
-
-            for y in rect.1 + rect.3 / 2..rect.3 {
-
-                // rayDir for leftmost ray (x = 0) and rightmost ray (x = w)
-                let ray_dir_x0 = dir.x - plane.x;
-                let ray_dir_y0 = dir.y - plane.y;
-                let ray_dir_x1 = dir.x + plane.x;
-                let ray_dir_y1 = dir.y + plane.y;
-
-                // Current y position compared to the center of the screen (the horizon)
-                let p = y - rect.3 / 2;
-
-                // Vertical position of the camera.
-                let pos_z = 0.5 * rect.3 as f32;
-
-                // Horizontal distance from the camera to the floor for the current row.
-                // 0.5 is the z position exactly in the middle between floor and ceiling.
-                let row_distance = pos_z / p as f32;
-
-                // calculate the real world step vector we have to add for each x (parallel to camera plane)
-                // adding step by step avoids multiplications with a weight in the inner loop
-                let floor_step_x = row_distance * (ray_dir_x1 - ray_dir_x0) / rect.2 as f32;
-                let floor_step_y = row_distance * (ray_dir_y1 - ray_dir_y0) / rect.2 as f32;
-
-                // real world coordinates of the leftmost column. This will be updated as we step to the right.
-                let mut floor_x = pos.x + row_distance * ray_dir_x0;
-                let mut floor_y = pos.y + row_distance * ray_dir_y0;
-
-                let mix_factor = row_distance / world.fog_distance;
-
-                for x in rect.0..rect.2 {
-
-                    // the cell coord is simply got from the integer parts of floorX and floorY
-                    let cell_x = floor_x.floor();
-                    let cell_y = floor_y.floor();
-
-                    if let Some(floor) = floor_tile {
-                        if let Some((image_id, rect)) = floor.texture {
-                            let tex_x = ((rect.2 as f32 * (floor_x - cell_x)) as usize).clamp(0, rect.2 - 1);
-                            let tex_y = ((rect.3 as f32 * (floor_y - cell_y)) as usize).clamp(0, rect.3 - 1);
-
-                            if let Some((tex_data, tex_width, _tex_height)) = world.get_image(image_id) {
-                                let tex_off = rect.0 + tex_x * 4 + rect.1 + ((tex_y as usize) * *tex_width as usize * 4);
-                                let off = x * 4 + y * 4 * stride;
-
-                                if mix_factor <= 0.0 {
-                                    frame[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
-                                } else
-                                if mix_factor >= 1.0 {
-                                    frame[off..off+4].copy_from_slice(&world.fog_color);
-                                } else {
-                                    let mut floor_color : [u8;4] = [0, 0, 0, 0];
-                                    floor_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
-                                    let color = self.mix_color(&floor_color, &world.fog_color, mix_factor);
-                                    frame[off..off+4].copy_from_slice(&color);
-                                }
-                            }
-                        }
-                    }
-
-                    if let Some(ceiling) = ceiling_tile {
-                        if let Some((image_id, tex_rect)) = ceiling.texture {
-                            let tex_x = ((tex_rect.2 as f32 * (floor_x - cell_x)) as usize).clamp(0, tex_rect.2 - 1);
-                            let tex_y = ((tex_rect.3 as f32 * (floor_y - cell_y)) as usize).clamp(0, tex_rect.3 - 1);
-
-                            if let Some((tex_data, tex_width, _tex_height)) = world.get_image(image_id) {
-                                let tex_off = tex_rect.0 + tex_x * 4 + tex_rect.1 + ((tex_y as usize) * *tex_width as usize * 4);
-                                let off = x * 4 + (rect.3 - y - 1) * 4 * stride;
-
-                                if mix_factor <= 0.0 {
-                                    frame[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
-                                } else
-                                if mix_factor >= 1.0 {
-                                    frame[off..off+4].copy_from_slice(&world.fog_color);
-                                } else {
-                                    let mut ceiling_color : [u8;4] = [0, 0, 0, 0];
-                                    ceiling_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
-                                    let color = self.mix_color(&ceiling_color, &world.fog_color, mix_factor);
-
-                                    frame[off..off+4].copy_from_slice(&color);
-                                }
-                            }
-                        }
-                    }
-
-                    floor_x += floor_step_x;
-                    floor_y += floor_step_y;
-                }
-            }
-        }*/
-
         // Render the walls
 
         buffer
@@ -664,6 +529,98 @@ impl Raycaster {
                     }
                 } else {
                     floor_is_textured = true;
+                }
+            }
+
+            // Texture the ceiling and floor
+
+            if ceiling_is_textured || floor_is_textured {
+
+                for y in rect.3 /2..rect.3 {
+
+                    // rayDir for leftmost ray (x = 0) and rightmost ray (x = w)
+                    let ray_dir_x0 = dir.x - plane.x;
+                    let ray_dir_y0 = dir.y - plane.y;
+                    let ray_dir_x1 = dir.x + plane.x;
+                    let ray_dir_y1 = dir.y + plane.y;
+
+                    // Current y position compared to the center of the screen (the horizon)
+                    let p = y - rect.3 / 2;
+
+                    // Vertical position of the camera.
+                    let pos_z = 0.5 * rect.3 as f32;
+
+                    // Horizontal distance from the camera to the floor for the current row.
+                    // 0.5 is the z position exactly in the middle between floor and ceiling.
+                    let row_distance = pos_z / p as f32;
+
+                    // calculate the real world step vector we have to add for each x (parallel to camera plane)
+                    // adding step by step avoids multiplications with a weight in the inner loop
+                    let floor_step_x = row_distance * (ray_dir_x1 - ray_dir_x0) / rect.2 as f32;
+                    let floor_step_y = row_distance * (ray_dir_y1 - ray_dir_y0) / rect.2 as f32;
+
+                    // real world coordinates of the leftmost column. This will be updated as we step to the right.
+                    let mut floor_x = pos.x + row_distance * ray_dir_x0;
+                    let mut floor_y = pos.y + row_distance * ray_dir_y0;
+
+                    floor_x += floor_step_x * x as f32;
+                    floor_y += floor_step_y * x as f32;
+
+                    let mix_factor = row_distance / world.fog_distance;
+
+                    // the cell coord is simply got from the integer parts of floorX and floorY
+                    let cell_x = floor_x.floor();
+                    let cell_y = floor_y.floor();
+
+
+                    if let Some(floor) = floor_tile {
+                        if let Some((image_id, rect)) = floor.texture {
+                            let tex_x = ((rect.2 as f32 * (floor_x - cell_x)) as usize).clamp(0, rect.2 - 1);
+                            let tex_y = ((rect.3 as f32 * (floor_y - cell_y)) as usize).clamp(0, rect.3 - 1);
+
+                            if let Some((tex_data, tex_width, _tex_height)) = world.get_image(image_id) {
+                                let tex_off = rect.0 + tex_x * 4 + rect.1 + ((tex_y as usize) * *tex_width as usize * 4);
+                                let off = y * 4;//x * 4 + y * 4 * stride;
+
+                                if mix_factor <= 0.0 {
+                                    line[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
+                                } else
+                                if mix_factor >= 1.0 {
+                                    line[off..off+4].copy_from_slice(&world.fog_color);
+                                } else {
+                                    let mut floor_color : [u8;4] = [0, 0, 0, 0];
+                                    floor_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
+                                    let color = self.mix_color(&floor_color, &world.fog_color, mix_factor);
+                                    line[off..off+4].copy_from_slice(&color);
+                                }
+                            }
+                        }
+                    }
+
+                    if let Some(ceiling) = ceiling_tile {
+                        if let Some((image_id, tex_rect)) = ceiling.texture {
+                            let tex_x = ((tex_rect.2 as f32 * (floor_x - cell_x)) as usize).clamp(0, tex_rect.2 - 1);
+                            let tex_y = ((tex_rect.3 as f32 * (floor_y - cell_y)) as usize).clamp(0, tex_rect.3 - 1);
+
+                            if let Some((tex_data, tex_width, _tex_height)) = world.get_image(image_id) {
+                                let tex_off = tex_rect.0 + tex_x * 4 + tex_rect.1 + ((tex_y as usize) * *tex_width as usize * 4);
+                                let off = (rect.3 - y  - 1) * 4;
+
+                                if mix_factor <= 0.0 {
+                                    line[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
+                                } else
+                                if mix_factor >= 1.0 {
+                                    line[off..off+4].copy_from_slice(&world.fog_color);
+                                } else {
+                                    let mut ceiling_color : [u8;4] = [0, 0, 0, 0];
+                                    ceiling_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
+                                    let color = self.mix_color(&ceiling_color, &world.fog_color, mix_factor);
+
+                                    line[off..off+4].copy_from_slice(&color);
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -920,7 +877,7 @@ impl Raycaster {
 
         // Copy the buffer into the frame 90 degrees rotated
         frame
-            .par_rchunks_exact_mut(width as usize * 4)
+            .par_rchunks_exact_mut(in_stride as usize * 4)
             .enumerate()
             .for_each(|(y, line)| {
                 for x in 0..in_rect.2 {

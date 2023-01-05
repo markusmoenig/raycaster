@@ -14,12 +14,12 @@ A demo application using [pixels](https://crates.io/crates/pixels) is available 
 * Adjustable fog color and distance
 * Sprites
 * Animation support
+* Multi-threaded or single-threaded rendering
 
 ## Todo
 
 * Doors
 * Lighting
-* Multi-thread the code
 
 ## Usage
 

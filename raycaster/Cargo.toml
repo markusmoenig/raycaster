@@ -10,3 +10,4 @@ keywords = ["raycasting", "graphics", "game", "engine", "retro"]
 
 [dependencies]
 rustc-hash = "1.1.0"
+rayon = "1.6.1"

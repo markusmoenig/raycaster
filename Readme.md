@@ -19,6 +19,7 @@ A demo application using [pixels](https://crates.io/crates/pixels) is available 
 
 * Doors
 * Lighting
+* Multi-thread the code
 
 ## Usage
 

@@ -41,9 +41,18 @@ impl Raycaster {
         }
     }
 
-    #[cfg(target_arch = "wasm32")]
-    /// Renders the world map into the frame inside the given rectangle
+    #[cfg(feature = "single_threaded")]
     pub fn render(&mut self, frame: &mut [u8], rect: (usize, usize, usize, usize), stride: usize, world: &WorldMap) {
+        self.render_st(frame, rect, stride, world);
+    }
+
+    #[cfg(not(feature = "single_threaded"))]
+    pub fn render(&mut self, frame: &mut [u8], rect: (usize, usize, usize, usize), stride: usize, world: &WorldMap) {
+        self.render_mt(frame, rect, stride, world);
+    }
+
+    /// Renders the world map into the frame inside the given rectangle
+    pub fn render_st(&mut self, frame: &mut [u8], rect: (usize, usize, usize, usize), stride: usize, world: &WorldMap) {
 
         let start = self.get_time();
 
@@ -473,7 +482,7 @@ impl Raycaster {
 
     #[cfg(not(target_arch = "wasm32"))]
     /// Renders the world map into the frame inside the given rectangle
-    pub fn render(&mut self, frame: &mut [u8], in_rect: (usize, usize, usize, usize), in_stride: usize, world: &WorldMap) {
+    pub fn render_mt(&mut self, frame: &mut [u8], in_rect: (usize, usize, usize, usize), in_stride: usize, world: &WorldMap) {
 
         let rect = (0, 0, in_rect.2, in_rect.3);
         let stride = rect.3;

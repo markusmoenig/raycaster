@@ -10,7 +10,7 @@ keywords = ["raycasting", "graphics", "game", "engine", "retro"]
 
 [features]
 default = []
-singlethread = []
+single_threaded = []
 
 [dependencies]
 rustc-hash = "1.1.0"

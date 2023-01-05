@@ -6,7 +6,7 @@ This is a full featured raycaster engine to produce game graphics similar to Wol
 
 The caster renders into a ```Vec<u8>``` frame. Next to [rayon](https://crates.io/crates/rayon), which is needed for multithreading, the only other dependency of the crate right now is [rustc-hash](https://crates.io/crates/rustc-hash) for a fast HashMap.
 
-If you are building for WASM multi-threading is automtically disabled and a single-threaded version is used. This also removes the rayon dependency.
+For single threaded rendering enable the *"single_threaded"* feature (for example for WASM targets). Multi threaded rendering is about 2 times faster than single threaded rendering on my machine.
 
 A demo application using [pixels](https://crates.io/crates/pixels) is available in the *demo* directory.
 

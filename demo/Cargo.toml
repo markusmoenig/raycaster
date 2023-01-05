@@ -10,4 +10,5 @@ pixels = "0.11.0"
 tao = "0.15.8"
 fontdue = "0.7.2"
 raycaster = { path = "../raycaster" }
+#raycaster = { path = "../raycaster", features = ["single_threaded"] }
 png = "0.17.2"

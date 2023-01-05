@@ -256,7 +256,7 @@ fn main() -> Result<(), Error> {
             Event::RedrawRequested(_) => {
 
                 let frame = pixels.get_frame_mut();
-                caster.render_mt(&mut frame[..], (0, 0, width, height), width, &world);
+                caster.render(&mut frame[..], (0, 0, width, height), width, &world);
 
                 if pixels
                     .render()

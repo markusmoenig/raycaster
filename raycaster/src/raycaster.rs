@@ -1,6 +1,7 @@
 use crate::prelude::*;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[cfg(not(target_arch = "wasm32"))]
 use rayon::{slice::ParallelSliceMut, iter::{IndexedParallelIterator, ParallelIterator}};
 
 pub struct Raycaster {
@@ -40,6 +41,7 @@ impl Raycaster {
         }
     }
 
+    #[cfg(target_arch = "wasm32")]
     /// Renders the world map into the frame inside the given rectangle
     pub fn render(&mut self, frame: &mut [u8], rect: (usize, usize, usize, usize), stride: usize, world: &WorldMap) {
 
@@ -469,8 +471,9 @@ impl Raycaster {
         self.rot_speed = frame_time * 2.0;
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     /// Renders the world map into the frame inside the given rectangle
-    pub fn render_mt(&mut self, frame: &mut [u8], in_rect: (usize, usize, usize, usize), in_stride: usize, world: &WorldMap) {
+    pub fn render(&mut self, frame: &mut [u8], in_rect: (usize, usize, usize, usize), in_stride: usize, world: &WorldMap) {
 
         let rect = (0, 0, in_rect.2, in_rect.3);
         let stride = rect.3;
@@ -834,7 +837,7 @@ impl Raycaster {
 
                         // loop through every vertical stripe of the sprite on screen
                         let stripe = x as i32;
-                        if x >= draw_start_x as usize && x < draw_end_x as usize {
+                        if stripe >= draw_start_x && stripe < draw_end_x {
                         //for stripe in draw_start_x..draw_end_x {
                             let tex_x = ((256 * (stripe - (-sprite_width / 2 + sprite_screen_x)) * tex_rect.2 as i32 / sprite_width) / 256) as usize;
 

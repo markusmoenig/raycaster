@@ -1,13 +1,19 @@
 [package]
 name = "raycaster"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Markus Moenig"]
-description = "A multi-threaded raycaster engine for creating games similar to Wolfenstein3D"
+description = "A multi-threaded raycaster engine for creating game graphics similar to Wolfenstein3D"
 license = "MIT"
 repository = "https://github.com/markusmoenig/Raycaster.git"
 keywords = ["raycasting", "graphics", "game", "engine", "retro"]
 
+[features]
+default = []
+singlethread = []
+
 [dependencies]
 rustc-hash = "1.1.0"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 rayon = "1.6.1"

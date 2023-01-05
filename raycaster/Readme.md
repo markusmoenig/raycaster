@@ -1,8 +1,10 @@
 # A Rust based Raycaster engine
 
-This will be a full featured raycaster engine to produce games similar to Wolfenstein 3D. I needed it to create 3D dungeons for my retro RPG creator [Eldiron](https://github.com/markusmoenig/Eldiron).
+This is a full featured raycaster engine to produce game graphics similar to Wolfenstein 3D. I need it to create 3D dungeons for my retro RPG creator [Eldiron](https://github.com/markusmoenig/Eldiron).
 
-The caster renders into a ```Vec<u8>``` frame. The only dependency of the crate right now is [rustc-hash](https://crates.io/crates/rustc-hash) for a fast HashMap.
+The caster renders into a ```Vec<u8>``` frame. Next to [rayon](https://crates.io/crates/rayon), which is needed for multithreading, the only other dependency of the crate right now is [rustc-hash](https://crates.io/crates/rustc-hash) for a fast HashMap.
+
+If you are building for WASM multi-threading is automtically disabled and a single-threaded version is used. This also removes the rayon dependency.
 
 A demo application using [pixels](https://crates.io/crates/pixels) is available in the *demo* directory.
 
@@ -11,11 +13,12 @@ A demo application using [pixels](https://crates.io/crates/pixels) is available 
 * Textured or colored walls, ceiling and floor
 * Adjustable fog color and distance
 * Sprites
+* Animation support
+* Multi-threaded or single-threaded rendering
 
 ## Todo
 
 * Doors
-* Animated textures
 * Lighting
 
 ## Usage

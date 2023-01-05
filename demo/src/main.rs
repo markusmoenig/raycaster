@@ -150,10 +150,15 @@ fn main() -> Result<(), Error> {
     // Fog
     world.set_fog([10, 10, 10, 255], 6.0);
 
-    let sprite = Sprite::new(7.0, 7.0, Tile::textured(image_id, calc_tile_rect(50, 8, 24)));
+    let sprite = Sprite::new(7.0, 7.0, Tile::textured_anim(image_id, calc_tile_rect(50, 8, 24,), 4));
     world.add_sprite(sprite);
 
     let mut caster = Raycaster::new();
+
+    // Animation event every 160 ms
+    caster.set_anim_time(160);
+
+    // Set the player position
     caster.set_pos(9, 7);
 
     // Set up the game loop

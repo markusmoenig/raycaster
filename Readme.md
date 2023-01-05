@@ -13,11 +13,11 @@ A demo application using [pixels](https://crates.io/crates/pixels) is available 
 * Textured or colored walls, ceiling and floor
 * Adjustable fog color and distance
 * Sprites
+* Animation support
 
 ## Todo
 
 * Doors
-* Animated textures
 * Lighting
 
 ## Usage

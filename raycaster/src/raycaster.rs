@@ -11,6 +11,10 @@ pub struct Raycaster {
     pos                     : vec2,
     dir                     : vec2,
     plane                   : vec2,
+
+    anim_curr_time          : u128,
+    anim_time               : u128,
+    anim_counter            : usize,
 }
 
 impl Raycaster {
@@ -27,6 +31,10 @@ impl Raycaster {
 
             move_speed      : 0.0,
             rot_speed       : 0.0,
+
+            anim_curr_time  : 0,
+            anim_time       : 250,
+            anim_counter    : 0,
         }
     }
 
@@ -34,6 +42,12 @@ impl Raycaster {
     pub fn render(&mut self, frame: &mut [u8], rect: (usize, usize, usize, usize), stride: usize, world: &WorldMap) {
 
         let start = self.get_time();
+
+        // Update animation counter every anim_time milliseconds
+        if self.anim_curr_time > self.anim_time {
+            self.anim_curr_time -= self.anim_time;
+            self.anim_counter = self.anim_counter.wrapping_add(1);
+        }
 
         let width = rect.2 as i32;
         let height = rect.3 as i32;
@@ -275,7 +289,7 @@ impl Raycaster {
 
                 if let Some(tile) = world.get_wall(map_x, map_y) {
 
-                    if let Some((image_id, rect)) = tile.texture {
+                    if let Some((image_id, rect)) = self.get_texture(&tile) {
 
                         // texturing calculations
 
@@ -393,7 +407,7 @@ impl Raycaster {
             let mut draw_end_x = sprite_width / 2 + sprite_screen_x;
             if draw_end_x >= width { draw_end_x = width - 1; }
 
-            if let Some((image_id, tex_rect)) = sprite.tile.texture {
+            if let Some((image_id, tex_rect)) = self.get_texture(&sprite.tile) {
                 if let Some((tex_data, tex_width, _tex_height)) = world.get_image(image_id) {
 
                     // loop through every vertical stripe of the sprite on screen
@@ -441,6 +455,10 @@ impl Raycaster {
 
         self.old_time = self.time;
         self.time = self.get_time();
+
+        if self.old_time > 0 {
+            self.anim_curr_time += self.time - self.old_time;
+        }
 
         let frame_time = (self.time - self.old_time) as f32 / 1000.0;
         // println!("fps {}", 1.0 / frame_time); //FPS counter
@@ -499,6 +517,11 @@ impl Raycaster {
         self.pos.y = y as f32;
     }
 
+    /// Set the animation time in ms
+    pub fn set_anim_time(&mut self, time: u16) {
+        self.anim_time = time as u128;
+    }
+
     /// Gets the current time in milliseconds
     fn get_time(&self) -> u128 {
         let stop = SystemTime::now()
@@ -514,6 +537,22 @@ impl Raycaster {
             (((1.0 - v) * (a[1] as f32 / 255.0) + b[1] as f32 / 255.0 * v) * 255.0) as u8,
             (((1.0 - v) * (a[2] as f32 / 255.0) + b[2] as f32 / 255.0 * v) * 255.0) as u8,
         255]
+    }
+
+    #[inline(always)]
+    /// Returns the tile rect for a given texture, handles animation
+    fn get_texture(&self, tile: &Tile) -> Option<(usize, (usize, usize, usize, usize))> {
+        if let Some((image_id, rect)) = tile.texture {
+            if tile.frames == 1 {
+                return Some((image_id, rect));
+            } else {
+                let frame = self.anim_counter % tile.frames as usize;
+                let x = rect.0 + (rect.2 * frame as usize * 4);
+                let y = rect.1;
+                return Some((image_id, (x, y, rect.2, rect.3)));
+            }
+        }
+        None
     }
 
 }

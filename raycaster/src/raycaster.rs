@@ -69,6 +69,20 @@ impl Raycaster {
         let dir = self.dir.clone();
         let plane = self.plane.clone();
 
+        // Sort the sprites
+
+        let mut sprites = world.sprites.clone();
+
+        // Calculate sprite distances
+
+        for sprite in &mut sprites {
+            sprite.distance = (pos.x - sprite.x) * (pos.x - sprite.x) + (pos.y - sprite.y) * (pos.y - sprite.y);
+        }
+
+        sprites.sort_by(|a,b| b.distance.partial_cmp( &a.distance ).unwrap() );
+
+        //
+
         let ceiling_tile = world.get_ceiling_tile();
         let mut ceiling_is_textured = false;
 
@@ -385,7 +399,7 @@ impl Raycaster {
 
         // Render the sprites
 
-        for sprite in &world.sprites {
+        for sprite in &sprites {
 
             // translate sprite position to relative to camera
             let sprite_x = sprite.x - pos.x;
@@ -406,7 +420,7 @@ impl Raycaster {
             let sprite_screen_x = ((width as f32 / 2.0) * (1.0 + transform_x / transform_y)) as i32;
 
             // calculate height of the sprite on screen
-            let sprite_height = ((height as f32 / (transform_y)) as i32).abs(); //using 'transformY' instead of the real distance prevents fisheye
+            let sprite_height = ((height as f32 / (transform_y)) as i32).abs() / sprite.shrink; //using 'transformY' instead of the real distance prevents fisheye
             // calculate lowest and highest pixel to fill in current stripe
             let mut draw_start_y = -sprite_height / 2 + height / 2;
             if draw_start_y < 0 { draw_start_y = 0; }
@@ -414,7 +428,7 @@ impl Raycaster {
             if draw_end_y >= height { draw_end_y = height - 1; }
 
             // calculate width of the sprite
-            let sprite_width = ((height as f32 / (transform_y)) as i32).abs();
+            let sprite_width = ((height as f32 / (transform_y)) as i32).abs() / sprite.shrink;
             let mut draw_start_x = -sprite_width / 2 + sprite_screen_x;
             if draw_start_x < 0 { draw_start_x = 0; }
             let mut draw_end_x = sprite_width / 2 + sprite_screen_x;
@@ -504,7 +518,19 @@ impl Raycaster {
 
         let mut buffer = vec![0; rect.2 * rect.3 * 4];
 
-        // Render the walls
+        // Sort the sprites
+
+        let mut sprites = world.sprites.clone();
+
+        // Calculate sprite distances
+
+        for sprite in &mut sprites {
+            sprite.distance = (pos.x - sprite.x) * (pos.x - sprite.x) + (pos.y - sprite.y) * (pos.y - sprite.y);
+        }
+
+        sprites.sort_by(|a,b| b.distance.partial_cmp( &a.distance ).unwrap() );
+
+        // -- Render per line
 
         buffer
             .par_rchunks_exact_mut(height as usize * 4)
@@ -806,7 +832,7 @@ impl Raycaster {
 
             // Render the sprites
 
-            for sprite in &world.sprites {
+            for sprite in &sprites {
 
                 // translate sprite position to relative to camera
                 let sprite_x = sprite.x - pos.x;
@@ -822,20 +848,22 @@ impl Raycaster {
                 let transform_x = inv_det * (dir.y * sprite_x - dir.x * sprite_y);
                 let transform_y = inv_det * (-plane.y * sprite_x + plane.x * sprite_y); //this is actually the depth inside the screen, that what Z is in 3D
 
+                let v_move_screen = (sprite.move_y / transform_y) as i32;
+
                 let mix_factor = transform_y / world.fog_distance;
 
                 let sprite_screen_x = ((width as f32 / 2.0) * (1.0 + transform_x / transform_y)) as i32;
 
                 // calculate height of the sprite on screen
-                let sprite_height = ((height as f32 / (transform_y)) as i32).abs(); //using 'transformY' instead of the real distance prevents fisheye
+                let sprite_height = ((height as f32 / (transform_y)) as i32).abs() / sprite.shrink; //using 'transformY' instead of the real distance prevents fisheye
                 // calculate lowest and highest pixel to fill in current stripe
-                let mut draw_start_y = -sprite_height / 2 + height / 2;
+                let mut draw_start_y = -sprite_height / 2 + height / 2 + v_move_screen;
                 if draw_start_y < 0 { draw_start_y = 0; }
-                let mut draw_end_y = sprite_height / 2 + height / 2;
+                let mut draw_end_y = sprite_height / 2 + height / 2 + v_move_screen;
                 if draw_end_y >= height { draw_end_y = height - 1; }
 
                 // calculate width of the sprite
-                let sprite_width = ((height as f32 / (transform_y)) as i32).abs();
+                let sprite_width = ((height as f32 / (transform_y)) as i32).abs() / sprite.shrink;
                 let mut draw_start_x = -sprite_width / 2 + sprite_screen_x;
                 if draw_start_x < 0 { draw_start_x = 0; }
                 let mut draw_end_x = sprite_width / 2 + sprite_screen_x;
@@ -859,7 +887,7 @@ impl Raycaster {
                             if transform_y > 0.0 && stripe > 0 && stripe < width && transform_y < z_buffer {
                                 for y in draw_start_y as usize .. draw_end_y as usize {
 
-                                    let d = (y) * 256 - height as usize * 128 + sprite_height as usize * 128; //256 and 128 factors to avoid floats
+                                    let d = (y - v_move_screen as usize) * 256 - height as usize * 128 + sprite_height as usize * 128; //256 and 128 factors to avoid floats
                                     let tex_y = (((d * tex_rect.3) / sprite_height as usize) / 256) as usize;
 
                                     let tex_off = tex_rect.0 + tex_x * 4 + tex_rect.1 + ((tex_y as usize) * *tex_width as usize * 4);

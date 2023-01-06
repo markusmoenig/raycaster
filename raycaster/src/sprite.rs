@@ -7,6 +7,16 @@ pub struct Sprite {
     pub y               : f32,
 
     pub tile            : Tile,
+
+    /// Shrinks the sprite
+    pub shrink          : i32,
+
+    /// Moves the sprite up and down
+    pub move_y          : f32,
+
+    /// Distance from the player, used for sorting the sprites
+    /// Only used internally
+    pub distance        : f32,
 }
 
 /// A tile
@@ -15,7 +25,10 @@ impl Sprite {
     pub fn new(x: f32, y: f32, tile: Tile) -> Self {
         Self {
             x, y,
-            tile
+            tile,
+            shrink      : 1,
+            move_y      : 0.0,
+            distance    : 0.0,
         }
     }
 }

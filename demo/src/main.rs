@@ -150,7 +150,14 @@ fn main() -> Result<(), Error> {
     // Fog
     world.set_fog([10, 10, 10, 255], 6.0);
 
+    // Bat Sprite
     let sprite = Sprite::new(7.0, 7.0, Tile::textured_anim(image_id, calc_tile_rect(50, 8, 24,), 4));
+    world.add_sprite(sprite);
+
+    // Torch Sprite
+    let mut sprite = Sprite::new(4.1, 6.1, Tile::textured_anim(image_id, calc_tile_rect(14, 14, 24,), 2));
+    sprite.shrink = 2; // Scale the sprite down
+    sprite.move_y = -100.0; // Move the sprite up
     world.add_sprite(sprite);
 
     let mut caster = Raycaster::new();

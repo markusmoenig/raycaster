@@ -1,6 +1,6 @@
 # A Rust based Raycaster engine
 
-![Image](images/demo.png)
+![Image](images/demo.gif)
 
 This is a full featured raycaster engine to produce game graphics similar to Wolfenstein 3D. I need it to create 3D dungeons for my retro RPG creator [Eldiron](https://github.com/markusmoenig/Eldiron).
 
@@ -17,11 +17,11 @@ A demo application using [pixels](https://crates.io/crates/pixels) is available 
 * Sprites
 * Animation support
 * Multi-threaded or single-threaded rendering
+* Tile based lighting
 
 ## Todo
 
 * Doors
-* Lighting
 
 ## Multi-threaded Rendering
 
@@ -53,10 +53,17 @@ world.set_floor_tile(Tile::colored([50, 50, 50, 255]));
 // Add as many walls as you like
 world.set_wall(5, 7, tile...);
 
-// Add a sprite at the given location.
+// Add a bat sprite at the given location.
 // You can manage the sprites yourself as WorldMap::sprites is public.
 let sprite = Sprite::new(7.0, 7.0, tile...);
 world.add_sprite(sprite);
+
+// Torch Sprite
+let mut sprite = Sprite::new(4.1, 6.1, Tile::textured_anim(image_id, calc_tile_rect(14, 14, 24,), 2));
+sprite.shrink = 2; // Scale the sprite down
+sprite.move_y = -100.0; // Move the sprite up
+world.add_sprite(sprite);
+world.add_light(4, 6, 2); // Add a light source at the torch position
 
 // Set the fog color and the fog distance, the distance is in tiles.
 world.set_fog([10, 10, 10, 255], 6.0);
@@ -77,7 +84,7 @@ let mut caster = Raycaster::new();
 caster.set_pos(9, 7);
 
 // Render into the given rectangle inside the frame (here the full frame), the stride (i.e. the width of the frame) and the world.
-caster.render(&mut frame[..], (0, 0, width, height), width, &world);
+caster.render(&mut frame[..], (0, 0, width, height), width, &mut world);
 ```
 
 ## Acknowledgements

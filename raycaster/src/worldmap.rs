@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use rand::{thread_rng, Rng};
 
 pub struct WorldMap {
     walls                   : FxHashMap<(i32, i32), Tile>,
@@ -12,6 +13,9 @@ pub struct WorldMap {
 
     pub fog_color           : [u8;4],
     pub fog_distance        : f32,
+
+    pub lights              : FxHashMap<(i32, i32), Light>,
+    pub light_map           : FxHashMap<(i32, i32), f32>
 }
 
 /// The world map
@@ -29,6 +33,9 @@ impl WorldMap {
 
             fog_color       : [0, 0, 0, 255],
             fog_distance    : 6.0,
+
+            lights          : FxHashMap::default(),
+            light_map       : FxHashMap::default(),
         }
     }
 
@@ -90,4 +97,69 @@ impl WorldMap {
         self.fog_distance = distance;
     }
 
+    /// Add a light
+    pub fn add_light(&mut self, x: i32, y: i32, intensity: i32) {
+        let light = Light::new(intensity);
+        self.lights.insert((x, y), light);
+    }
+
+    pub fn compute_lighting(&mut self) {
+        let mut map : FxHashMap<(i32, i32), f32> = FxHashMap::default();
+
+        let mut rng = thread_rng();
+
+        for (pos, l) in &self.lights {
+            map.insert(pos.clone(), 1.0);
+
+            if l.intensity > 0 {
+                let mut tl = (pos.0 - 1, pos.1 - 1);
+                let mut length = 3;
+
+                let mut d = 1;
+
+                let mut random : f32 = rng.gen();
+                random -= 0.5;
+                random *= 0.3;
+
+                while d < l.intensity {
+
+                    let i = 1.0 / (d*2) as f32 + random / d as f32;
+                    for x in tl.0..tl.0 + length {
+                        if let Some(value) = map.get_mut(&(x, tl.1)) {
+                            *value += i;
+                        } else {
+                            map.insert((x, tl.1), i);
+                        }
+
+                        if let Some(value) = map.get_mut(&(x, tl.1 + length - 1)) {
+                            *value += i;
+                        } else {
+                            map.insert((x, tl.1 + length - 1), i);
+                        }
+                    }
+
+                    for y in tl.1+1..tl.1 + length - 1 {
+                        if let Some(value) = map.get_mut(&(tl.0, y)) {
+                            *value += i;
+                        } else {
+                            map.insert((tl.0, y), i);
+                        }
+
+                        if let Some(value) = map.get_mut(&(tl.0 + length - 1, y)) {
+                            *value += i;
+                        } else {
+                            map.insert((tl.0 + length - 1, y), i);
+                        }
+                    }
+
+                    d += 1;
+                    length += 2;
+                    tl.0 -= 1;
+                    tl.1 -= 1;
+                }
+            }
+        }
+
+        self.light_map = map;
+    }
 }

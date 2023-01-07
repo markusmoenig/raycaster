@@ -159,6 +159,7 @@ fn main() -> Result<(), Error> {
     sprite.shrink = 2; // Scale the sprite down
     sprite.move_y = -100.0; // Move the sprite up
     world.add_sprite(sprite);
+    world.add_light(4, 6, 2); // Add a light source at the torch position
 
     let mut caster = Raycaster::new();
 
@@ -263,7 +264,7 @@ fn main() -> Result<(), Error> {
             Event::RedrawRequested(_) => {
 
                 let frame = pixels.get_frame_mut();
-                caster.render(&mut frame[..], (0, 0, width, height), width, &world);
+                caster.render(&mut frame[..], (0, 0, width, height), width, &mut world);
 
                 if pixels
                     .render()

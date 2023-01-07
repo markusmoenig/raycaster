@@ -4,7 +4,7 @@ This is a full featured raycaster engine to produce game graphics similar to Wol
 
 The caster renders into a ```Vec<u8>``` frame. Next to [rayon](https://crates.io/crates/rayon), which is needed for multithreading, the only other dependency of the crate right now is [rustc-hash](https://crates.io/crates/rustc-hash) for a fast HashMap.
 
-For single threaded rendering enable the *"single_threaded"* feature (for example for WASM targets). Multi threaded rendering is about 2 times faster than single threaded rendering on my machine.
+For single threaded rendering enable the *"single_threaded"* feature (for example for WASM targets). Multi threaded rendering is about 2-4 times faster than single threaded on my machine.
 
 A demo application using [pixels](https://crates.io/crates/pixels) is available in the *demo* directory.
 
@@ -15,11 +15,17 @@ A demo application using [pixels](https://crates.io/crates/pixels) is available 
 * Sprites
 * Animation support
 * Multi-threaded or single-threaded rendering
+* Tile based lighting
 
 ## Todo
 
 * Doors
-* Lighting
+
+## Multi-threaded Rendering
+
+As a raycaster works with stripes of pixels (instead of slices) the internal rendering stores the image 90 percent rotated so that it can work with slices. This helps with memory access and makes it possible to use rayon for multithreading. The image is than rotated back into the destination frame, this too is done in parallel.
+
+Multithreaded rendering of an 1280x800 image is done in about 2-3 ms on my machine. Single threaded rendering takes about 7-8 ms. The renderer should be fast enough to handle 4k resolutions.
 
 ## Usage
 
@@ -45,10 +51,17 @@ world.set_floor_tile(Tile::colored([50, 50, 50, 255]));
 // Add as many walls as you like
 world.set_wall(5, 7, tile...);
 
-// Add a sprite at the given location.
+// Add a bat sprite at the given location.
 // You can manage the sprites yourself as WorldMap::sprites is public.
 let sprite = Sprite::new(7.0, 7.0, tile...);
 world.add_sprite(sprite);
+
+// Torch Sprite
+let mut sprite = Sprite::new(4.1, 6.1, Tile::textured_anim(image_id, calc_tile_rect(14, 14, 24,), 2));
+sprite.shrink = 2; // Scale the sprite down
+sprite.move_y = -100.0; // Move the sprite up
+world.add_sprite(sprite);
+world.add_light(4, 6, 2); // Add a light source at the torch position
 
 // Set the fog color and the fog distance, the distance is in tiles.
 world.set_fog([10, 10, 10, 255], 6.0);
@@ -69,7 +82,7 @@ let mut caster = Raycaster::new();
 caster.set_pos(9, 7);
 
 // Render into the given rectangle inside the frame (here the full frame), the stride (i.e. the width of the frame) and the world.
-caster.render(&mut frame[..], (0, 0, width, height), width, &world);
+caster.render(&mut frame[..], (0, 0, width, height), width, &mut world);
 ```
 
 ## Acknowledgements

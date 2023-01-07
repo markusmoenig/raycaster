@@ -42,17 +42,17 @@ impl Raycaster {
     }
 
     #[cfg(feature = "single_threaded")]
-    pub fn render(&mut self, frame: &mut [u8], rect: (usize, usize, usize, usize), stride: usize, world: &WorldMap) {
+    pub fn render(&mut self, frame: &mut [u8], rect: (usize, usize, usize, usize), stride: usize, world: &mut WorldMap) {
         self.render_st(frame, rect, stride, world);
     }
 
     #[cfg(not(feature = "single_threaded"))]
-    pub fn render(&mut self, frame: &mut [u8], rect: (usize, usize, usize, usize), stride: usize, world: &WorldMap) {
+    pub fn render(&mut self, frame: &mut [u8], rect: (usize, usize, usize, usize), stride: usize, world: &mut WorldMap) {
         self.render_mt(frame, rect, stride, world);
     }
 
     /// Renders the world map into the frame inside the given rectangle
-    pub fn render_st(&mut self, frame: &mut [u8], rect: (usize, usize, usize, usize), stride: usize, world: &WorldMap) {
+    pub fn render_st(&mut self, frame: &mut [u8], rect: (usize, usize, usize, usize), stride: usize, world: &mut WorldMap) {
 
         let start = self.get_time();
 
@@ -60,6 +60,7 @@ impl Raycaster {
         if self.anim_curr_time > self.anim_time {
             self.anim_curr_time -= self.anim_time;
             self.anim_counter = self.anim_counter.wrapping_add(1);
+            world.compute_lighting();
         }
 
         let width = rect.2 as i32;
@@ -177,17 +178,10 @@ impl Raycaster {
                                 let tex_off = rect.0 + tex_x * 4 + rect.1 + ((tex_y as usize) * *tex_width as usize * 4);
                                 let off = x * 4 + y * 4 * stride;
 
-                                if mix_factor <= 0.0 {
-                                    frame[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
-                                } else
-                                if mix_factor >= 1.0 {
-                                    frame[off..off+4].copy_from_slice(&world.fog_color);
-                                } else {
-                                    let mut floor_color : [u8;4] = [0, 0, 0, 0];
-                                    floor_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
-                                    let color = self.mix_color(&floor_color, &world.fog_color, mix_factor);
-                                    frame[off..off+4].copy_from_slice(&color);
-                                }
+                                let mut floor_color : [u8;4] = [0, 0, 0, 0];
+                                floor_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
+                                let color = self.add_lighting(&mut floor_color, &world, (floor_x as i32, floor_y as i32), mix_factor);
+                                frame[off..off+4].copy_from_slice(&color);
                             }
                         }
                     }
@@ -201,17 +195,10 @@ impl Raycaster {
                                 let tex_off = tex_rect.0 + tex_x * 4 + tex_rect.1 + ((tex_y as usize) * *tex_width as usize * 4);
                                 let off = x * 4 + (rect.3 - y - 1) * 4 * stride;
 
-                                if mix_factor <= 0.0 {
-                                    frame[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
-                                } else
-                                if mix_factor >= 1.0 {
-                                    frame[off..off+4].copy_from_slice(&world.fog_color);
-                                } else {
-                                    let mut ceiling_color : [u8;4] = [0, 0, 0, 0];
-                                    ceiling_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
-                                    let color = self.mix_color(&ceiling_color, &world.fog_color, mix_factor);
-                                    frame[off..off+4].copy_from_slice(&color);
-                                }
+                                let mut ceiling_color : [u8;4] = [0, 0, 0, 0];
+                                ceiling_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
+                                let color = self.add_lighting(&mut ceiling_color, &world, (floor_x as i32, floor_y as i32), mix_factor);
+                                frame[off..off+4].copy_from_slice(&color);
                             }
                         }
                     }
@@ -349,34 +336,14 @@ impl Raycaster {
                                 let tex_off = rect.0 + tex_x * 4 + rect.1 + ((tex_pos as usize) * *tex_width as usize * 4);
                                 let off = off_x + y as usize * 4 * stride;
 
-                                if mix_factor <= 0.0 {
-                                    frame[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
-                                } else
-                                if mix_factor >= 1.0 {
-                                    frame[off..off+4].copy_from_slice(&world.fog_color);
-                                } else {
-                                    let mut wall_color : [u8;4] = [0, 0, 0, 0];
-                                    wall_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
-                                    let color = self.mix_color(&wall_color, &world.fog_color, mix_factor);
-                                    frame[off..off+4].copy_from_slice(&color);
-                                }
+                                let mut wall_color : [u8;4] = [0, 0, 0, 0];
+                                wall_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
+                                let color = self.add_lighting(&mut wall_color, &world, (map_x, map_y), mix_factor);
+                                frame[off..off+4].copy_from_slice(&color);
 
                                 tex_pos += step;
                             }
                         }
-                        /*
-                        // Starting texture coordinate
-                        double texPos = (drawStart - h / 2 + lineHeight / 2) * step;
-                        for(int y = drawStart; y<drawEnd; y++)
-                        {
-                            // Cast the texture coordinate to integer, and mask with (texHeight - 1) in case of overflow
-                            int texY = (int)texPos & (texHeight - 1);
-                            texPos += step;
-                            Uint32 color = texture[texNum][texHeight * texY + texX];
-                            //make color darker for y-sides: R, G and B byte each divided through two with a "shift" and an "and"
-                            if(side == 1) color = (color >> 1) & 8355711;
-                            buffer[y][x] = color;
-                        }*/
                     }
                 }
 
@@ -415,6 +382,8 @@ impl Raycaster {
             let transform_x = inv_det * (dir.y * sprite_x - dir.x * sprite_y);
             let transform_y = inv_det * (-plane.y * sprite_x + plane.x * sprite_y); //this is actually the depth inside the screen, that what Z is in 3D
 
+            let v_move_screen = (sprite.move_y / transform_y) as i32;
+
             let mix_factor = transform_y / world.fog_distance;
 
             let sprite_screen_x = ((width as f32 / 2.0) * (1.0 + transform_x / transform_y)) as i32;
@@ -422,9 +391,9 @@ impl Raycaster {
             // calculate height of the sprite on screen
             let sprite_height = ((height as f32 / (transform_y)) as i32).abs() / sprite.shrink; //using 'transformY' instead of the real distance prevents fisheye
             // calculate lowest and highest pixel to fill in current stripe
-            let mut draw_start_y = -sprite_height / 2 + height / 2;
+            let mut draw_start_y = -sprite_height / 2 + height / 2 + v_move_screen;
             if draw_start_y < 0 { draw_start_y = 0; }
-            let mut draw_end_y = sprite_height / 2 + height / 2;
+            let mut draw_end_y = sprite_height / 2 + height / 2 + v_move_screen;
             if draw_end_y >= height { draw_end_y = height - 1; }
 
             // calculate width of the sprite
@@ -450,25 +419,18 @@ impl Raycaster {
                         if transform_y > 0.0 && stripe > 0 && stripe < width && transform_y < z_buffer[stripe as usize] {
                             for y in draw_start_y as usize .. draw_end_y as usize {
 
-                                let d = (y) * 256 - height as usize * 128 + sprite_height as usize * 128; //256 and 128 factors to avoid floats
+                                let d = (y - v_move_screen as usize) * 256 - height as usize * 128 + sprite_height as usize * 128; //256 and 128 factors to avoid floats
                                 let tex_y = (((d * tex_rect.3) / sprite_height as usize) / 256) as usize;
 
                                 let tex_off = tex_rect.0 + tex_x * 4 + tex_rect.1 + ((tex_y as usize) * *tex_width as usize * 4);
                                 let off = (rect.0 + stripe as usize) * 4 + (rect.1 + y as usize) * 4 * stride;
 
-                                if mix_factor <= 0.0 {
-                                    frame[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
-                                } else
-                                if mix_factor >= 1.0 {
-                                    frame[off..off+4].copy_from_slice(&world.fog_color);
-                                } else {
-                                    let mut wall_color : [u8;4] = [0, 0, 0, 0];
-                                    wall_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
-                                    let tex_alpha = tex_data[tex_off+3] as f32 / 255.0;
-                                    if tex_alpha > 0.0 {
-                                        let color = self.mix_color(&wall_color, &world.fog_color, mix_factor * tex_alpha);
-                                        frame[off..off+4].copy_from_slice(&color);
-                                    }
+                                let mut sprite_color : [u8;4] = [0, 0, 0, 0];
+                                sprite_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
+                                let tex_alpha = tex_data[tex_off+3] as f32 / 255.0;
+                                if tex_alpha > 0.0 {
+                                    let color = self.add_lighting(&mut sprite_color, &world, (sprite.x as i32, sprite.y as i32), mix_factor);
+                                    frame[off..off+4].copy_from_slice(&color);
                                 }
                             }
                         }
@@ -496,7 +458,7 @@ impl Raycaster {
 
     #[cfg(not(target_arch = "wasm32"))]
     /// Renders the world map into the frame inside the given rectangle
-    pub fn render_mt(&mut self, frame: &mut [u8], in_rect: (usize, usize, usize, usize), in_stride: usize, world: &WorldMap) {
+    pub fn render_mt(&mut self, frame: &mut [u8], in_rect: (usize, usize, usize, usize), in_stride: usize, world: &mut WorldMap) {
 
         let rect = (0, 0, in_rect.2, in_rect.3);
         let stride = rect.3;
@@ -507,6 +469,7 @@ impl Raycaster {
         if self.anim_curr_time > self.anim_time {
             self.anim_curr_time -= self.anim_time;
             self.anim_counter = self.anim_counter.wrapping_add(1);
+            world.compute_lighting();
         }
 
         let width = rect.2 as i32;
@@ -618,19 +581,13 @@ impl Raycaster {
 
                             if let Some((tex_data, tex_width, _tex_height)) = world.get_image(image_id) {
                                 let tex_off = rect.0 + tex_x * 4 + rect.1 + ((tex_y as usize) * *tex_width as usize * 4);
-                                let off = y * 4;//x * 4 + y * 4 * stride;
+                                let off = y * 4;
 
-                                if mix_factor <= 0.0 {
-                                    line[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
-                                } else
-                                if mix_factor >= 1.0 {
-                                    line[off..off+4].copy_from_slice(&world.fog_color);
-                                } else {
-                                    let mut floor_color : [u8;4] = [0, 0, 0, 0];
-                                    floor_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
-                                    let color = self.mix_color(&floor_color, &world.fog_color, mix_factor);
-                                    line[off..off+4].copy_from_slice(&color);
-                                }
+                                let mut floor_color : [u8;4] = [0, 0, 0, 0];
+                                floor_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
+                                let color = self.add_lighting(&mut floor_color, &world, (floor_x as i32, floor_y as i32), mix_factor);
+
+                                line[off..off+4].copy_from_slice(&color);
                             }
                         }
                     }
@@ -644,18 +601,10 @@ impl Raycaster {
                                 let tex_off = tex_rect.0 + tex_x * 4 + tex_rect.1 + ((tex_y as usize) * *tex_width as usize * 4);
                                 let off = (rect.3 - y  - 1) * 4;
 
-                                if mix_factor <= 0.0 {
-                                    line[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
-                                } else
-                                if mix_factor >= 1.0 {
-                                    line[off..off+4].copy_from_slice(&world.fog_color);
-                                } else {
-                                    let mut ceiling_color : [u8;4] = [0, 0, 0, 0];
-                                    ceiling_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
-                                    let color = self.mix_color(&ceiling_color, &world.fog_color, mix_factor);
-
-                                    line[off..off+4].copy_from_slice(&color);
-                                }
+                                let mut ceiling_color : [u8;4] = [0, 0, 0, 0];
+                                ceiling_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
+                                let color = self.add_lighting(&mut ceiling_color, &world, (floor_x as i32, floor_y as i32), mix_factor);
+                                line[off..off+4].copy_from_slice(&color);
                             }
                         }
                     }
@@ -780,37 +729,16 @@ impl Raycaster {
                         if let Some((tex_data, tex_width, _tex_height)) = world.get_image(image_id) {
                             for y in draw_start..draw_end {
                                 let tex_off = rect.0 + tex_x * 4 + rect.1 + ((tex_pos as usize) * *tex_width as usize * 4);
-                                let off = y as usize * 4;// + x as usize * 4 * stride;
+                                let off = y as usize * 4;
 
-                                if mix_factor <= 0.0 {
-                                    line[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
-                                } else
-                                if mix_factor >= 1.0 {
-                                    line[off..off+4].copy_from_slice(&world.fog_color);
-                                } else {
-                                    let mut wall_color : [u8;4] = [0, 0, 0, 0];
-                                    wall_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
-                                    let color = self.mix_color(&wall_color, &world.fog_color, mix_factor);
-
-                                    line[off..off+4].copy_from_slice(&color);
-                                }
+                                let mut wall_color : [u8;4] = [0, 0, 0, 0];
+                                wall_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
+                                let color = self.add_lighting(&mut wall_color, &world, (map_x, map_y), mix_factor);
+                                line[off..off+4].copy_from_slice(&color);
 
                                 tex_pos += step;
                             }
                         }
-                        /*
-                        // Starting texture coordinate
-                        double texPos = (drawStart - h / 2 + lineHeight / 2) * step;
-                        for(int y = drawStart; y<drawEnd; y++)
-                        {
-                            // Cast the texture coordinate to integer, and mask with (texHeight - 1) in case of overflow
-                            int texY = (int)texPos & (texHeight - 1);
-                            texPos += step;
-                            Uint32 color = texture[texNum][texHeight * texY + texX];
-                            //make color darker for y-sides: R, G and B byte each divided through two with a "shift" and an "and"
-                            if(side == 1) color = (color >> 1) & 8355711;
-                            buffer[y][x] = color;
-                        }*/
                     }
                 }
 
@@ -891,21 +819,14 @@ impl Raycaster {
                                     let tex_y = (((d * tex_rect.3) / sprite_height as usize) / 256) as usize;
 
                                     let tex_off = tex_rect.0 + tex_x * 4 + tex_rect.1 + ((tex_y as usize) * *tex_width as usize * 4);
-                                    let off = y * 4;//(rect.0 + stripe as usize) * 4 + (rect.1 + y as usize) * 4 * stride;
+                                    let off = y * 4;
 
-                                    if mix_factor <= 0.0 {
-                                        line[off..off+4].copy_from_slice(&tex_data[tex_off..tex_off+4]);
-                                    } else
-                                    if mix_factor >= 1.0 {
-                                        // line[off..off+4].copy_from_slice(&world.fog_color);
-                                    } else {
-                                        let mut wall_color : [u8;4] = [0, 0, 0, 0];
-                                        wall_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
-                                        let tex_alpha = tex_data[tex_off+3] as f32 / 255.0;
-                                        if tex_alpha > 0.0 {
-                                            let color = self.mix_color(&wall_color, &world.fog_color, mix_factor * tex_alpha);
-                                            line[off..off+4].copy_from_slice(&color);
-                                        }
+                                    let mut sprite_color : [u8;4] = [0, 0, 0, 0];
+                                    sprite_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
+                                    let tex_alpha = tex_data[tex_off+3] as f32 / 255.0;
+                                    if tex_alpha > 0.0 {
+                                        let color = self.add_lighting(&mut sprite_color, &world, (sprite.x as i32, sprite.y as i32), mix_factor * tex_alpha);
+                                        line[off..off+4].copy_from_slice(&color);
                                     }
                                 }
                             }
@@ -1030,6 +951,23 @@ impl Raycaster {
             }
         }
         None
+    }
+
+    #[inline(always)]
+    /// Adds the lighting to the pixel color
+    pub fn add_lighting(&self, color: &[u8; 4], world: &WorldMap, pos: (i32, i32), mix_factor: f32) -> [u8;4] {
+        if let Some(l) = world.light_map.get(&pos) {
+
+            let factor = ((1.0 - l) - mix_factor).clamp(0.0, 1.0);
+
+            let mut cr = color[0] as f32; cr -= cr * factor;
+            let mut cg = color[1] as f32; cg -= cg * factor;
+            let mut cb = color[2] as f32; cb -= cb * factor;
+
+            return [cr as u8, cg as u8, cb as u8, 255];
+        } else {
+            return self.mix_color(&color, &world.fog_color, mix_factor);
+        }
     }
 
 }

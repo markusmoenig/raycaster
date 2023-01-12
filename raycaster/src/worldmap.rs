@@ -3,6 +3,8 @@ use rand::{thread_rng, Rng};
 
 pub struct WorldMap {
     walls                   : FxHashMap<(i32, i32), Tile>,
+    floors                  : FxHashMap<(i32, i32), Tile>,
+    ceilings                : FxHashMap<(i32, i32), Tile>,
 
     images                  : Vec<(Vec<u8>, u32, u32)>,
 
@@ -24,6 +26,9 @@ impl WorldMap {
 
         Self {
             walls           : FxHashMap::default(),
+            floors          : FxHashMap::default(),
+            ceilings        : FxHashMap::default(),
+
             images          : vec![],
 
             sprites         : vec![],
@@ -55,23 +60,53 @@ impl WorldMap {
     }
 
     /// Sets the ceiling tile
-    pub fn set_ceiling_tile(&mut self, tile: Tile) {
+    pub fn set_default_ceiling(&mut self, tile: Tile) {
         self.ceiling_tile = Some(tile);
     }
 
     /// Gets the ceiling tile
-    pub fn get_ceiling_tile(&self) -> Option<&Tile> {
+    pub fn get_default_ceiling(&self) -> Option<&Tile> {
         self.ceiling_tile.as_ref()
     }
 
+    /// Sets a ceiling at the given position
+    pub fn set_ceiling(&mut self, x: i32, y: i32, tile: Tile) {
+        self.ceilings.insert((x, y), tile);
+    }
+
+    /// Checks if there is a ceiling at the given position
+    pub fn has_ceiling(&self, x: i32, y: i32) -> bool {
+        self.ceilings.get(&(x, y)).is_some()
+    }
+
+    /// Gets the ceiling at the given position
+    pub fn get_ceiling(&self, x: i32, y: i32) -> Option<&Tile> {
+        self.ceilings.get(&(x, y))
+    }
+
     /// Sets the floor tile
-    pub fn set_floor_tile(&mut self, tile: Tile) {
+    pub fn set_default_floor(&mut self, tile: Tile) {
         self.floor_tile = Some(tile);
     }
 
     /// Gets the floor tile
-    pub fn get_floor_tile(&self) -> Option<&Tile> {
+    pub fn get_default_floor(&self) -> Option<&Tile> {
         self.floor_tile.as_ref()
+    }
+
+    /// Sets a floor at the given position
+    pub fn set_floor(&mut self, x: i32, y: i32, tile: Tile) {
+        self.floors.insert((x, y), tile);
+    }
+
+    /// Checks if there is a floor at the given position
+    pub fn has_floor(&self, x: i32, y: i32) -> bool {
+        self.floors.get(&(x, y)).is_some()
+    }
+
+    /// Gets the floor at the given position
+    pub fn get_floor(&self, x: i32, y: i32) -> Option<&Tile> {
+        self.floors.get(&(x, y))
     }
 
     /// Adds an image to the list of images

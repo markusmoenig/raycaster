@@ -84,10 +84,10 @@ impl Raycaster {
 
         //
 
-        let ceiling_tile = world.get_ceiling_tile();
+        let ceiling_tile = world.get_default_ceiling();
         let mut ceiling_is_textured = false;
 
-        let floor_tile = world.get_floor_tile();
+        let floor_tile = world.get_default_floor();
         let mut floor_is_textured = false;
 
         // Background color if no ceiling or floor tile is set
@@ -500,10 +500,10 @@ impl Raycaster {
             .enumerate()
             .for_each(|(x, line)| {
 
-            let ceiling_tile = world.get_ceiling_tile();
+            let ceiling_tile = world.get_default_ceiling();
             let mut ceiling_is_textured = false;
 
-            let floor_tile = world.get_floor_tile();
+            let floor_tile = world.get_default_floor();
             let mut floor_is_textured = false;
 
             let mut z_buffer = f32::MAX;
@@ -535,7 +535,7 @@ impl Raycaster {
 
             // Texture the ceiling and floor
 
-            if ceiling_is_textured || floor_is_textured {
+            if true {
 
                 for y in rect.3 /2..rect.3 {
 
@@ -573,14 +573,21 @@ impl Raycaster {
                     let cell_x = floor_x.floor();
                     let cell_y = floor_y.floor();
 
+                    let map_x = cell_x as i32;
+                    let map_y = cell_y as i32;
 
-                    if let Some(floor) = floor_tile {
+                    let mut floor = world.get_floor(map_x, map_y);
+                    if floor.is_none() {
+                        floor = floor_tile;
+                    }
+
+                    if let Some(floor) = floor {
                         if let Some((image_id, rect)) = floor.texture {
                             let tex_x = ((rect.2 as f32 * (floor_x - cell_x)) as usize).clamp(0, rect.2 - 1);
                             let tex_y = ((rect.3 as f32 * (floor_y - cell_y)) as usize).clamp(0, rect.3 - 1);
 
                             if let Some((tex_data, tex_width, _tex_height)) = world.get_image(image_id) {
-                                let tex_off = rect.0 + tex_x * 4 + rect.1 + ((tex_y as usize) * *tex_width as usize * 4);
+                                let tex_off = rect.0 + tex_x * 4 + rect.1 + ((rect.3 - tex_y as usize - 1) * *tex_width as usize * 4);
                                 let off = y * 4;
 
                                 let mut floor_color : [u8;4] = [0, 0, 0, 0];
@@ -812,14 +819,18 @@ impl Raycaster {
                             // 3) it's on the screen (right)
                             // 4) ZBuffer, with perpendicular distance
 
+
                             if transform_y > 0.0 && stripe > 0 && stripe < width && transform_y < z_buffer {
                                 for y in draw_start_y as usize .. draw_end_y as usize {
 
                                     let d = (y - v_move_screen as usize) * 256 - height as usize * 128 + sprite_height as usize * 128; //256 and 128 factors to avoid floats
-                                    let tex_y = (((d * tex_rect.3) / sprite_height as usize) / 256) as usize;
+                                    let tex_y = ((((d * tex_rect.3) / sprite_height as usize) / 256) as usize).clamp(0, tex_rect.3 as usize - 1);
+
+                                    // println!("{} {} {} {}", tex_x, tex_y, tex_rect.2, tex_rect.3);
 
                                     let tex_off = tex_rect.0 + tex_x * 4 + tex_rect.1 + ((tex_y as usize) * *tex_width as usize * 4);
                                     let off = y * 4;
+
 
                                     let mut sprite_color : [u8;4] = [0, 0, 0, 0];
                                     sprite_color.copy_from_slice(&tex_data[tex_off..tex_off+4]);
@@ -841,15 +852,19 @@ impl Raycaster {
             .par_rchunks_exact_mut(in_stride as usize * 4)
             .enumerate()
             .for_each(|(y, line)| {
-                for x in 0..in_rect.2 {
-                    let off = (in_rect.0 + x) * 4;
-                    let buffer_off = (rect.3 - y - 1) * 4 + (rect.2 - x - 1) * 4 * stride;
-                    line[off..off+4].copy_from_slice(&buffer[buffer_off..buffer_off+4]);
+                if y >= in_rect.1 && y < in_rect.1 + in_rect.3 {
+                    let ry = y - in_rect.1;
+                    for x in 0..rect.2 {
+                        let off = (in_rect.0 + x) * 4;
+
+                        let buffer_off = (rect.3 - ry - 1) * 4 + (rect.2 - x - 1) * 4 * stride;
+                        line[off..off+4].copy_from_slice(&buffer[buffer_off..buffer_off+4]);
+                    }
                 }
             });
 
         let stop = self.get_time();
-        println!("tick time {:?}", stop - start);
+        // println!("tick time {:?}", stop - start);
 
         self.old_time = self.time;
         self.time = self.get_time();
@@ -909,10 +924,83 @@ impl Raycaster {
         self.plane.y = old_plane_x * (-self.rot_speed).sin() + self.plane.y * (-self.rot_speed).cos();
     }
 
+    /// Face north
+    pub fn face_north(&mut self) {
+
+        self.dir.x = -1.0;
+        self.dir.y = -0.0;
+
+        self.plane.x = 0.0;
+        self.plane.y = 0.66;
+
+        let old_dir_x = self.dir.x;
+
+        let angle = 90.0 * std::f32::consts::PI / 180.0;
+
+        self.dir.x = self.dir.x * (-angle).cos() - self.dir.y * (-angle).sin();
+        self.dir.y = old_dir_x * (-angle).sin() + self.dir.y * (-angle).cos();
+
+        let old_plane_x = self.plane.x;
+        self.plane.x = self.plane.x * (-angle).cos() - self.plane.y * (-angle).sin();
+        self.plane.y = old_plane_x * (-angle).sin() + self.plane.y * (-angle).cos();
+    }
+
+    /// Face east
+    pub fn face_east(&mut self) {
+
+        self.dir.x = -1.0;
+        self.dir.y = -0.0;
+
+        self.plane.x = 0.0;
+        self.plane.y = 0.66;
+
+        let old_dir_x = self.dir.x;
+
+        let angle = 2.0 * 90.0 * std::f32::consts::PI / 180.0;
+
+        self.dir.x = self.dir.x * (-angle).cos() - self.dir.y * (-angle).sin();
+        self.dir.y = old_dir_x * (-angle).sin() + self.dir.y * (-angle).cos();
+
+        let old_plane_x = self.plane.x;
+        self.plane.x = self.plane.x * (-angle).cos() - self.plane.y * (-angle).sin();
+        self.plane.y = old_plane_x * (-angle).sin() + self.plane.y * (-angle).cos();
+    }
+
+    /// Face south
+    pub fn face_south(&mut self) {
+
+        self.dir.x = -1.0;
+        self.dir.y = -0.0;
+
+        self.plane.x = 0.0;
+        self.plane.y = 0.66;
+
+        let old_dir_x = self.dir.x;
+
+        let angle = 3.0 * 90.0 * std::f32::consts::PI / 180.0;
+
+        self.dir.x = self.dir.x * (-angle).cos() - self.dir.y * (-angle).sin();
+        self.dir.y = old_dir_x * (-angle).sin() + self.dir.y * (-angle).cos();
+
+        let old_plane_x = self.plane.x;
+        self.plane.x = self.plane.x * (-angle).cos() - self.plane.y * (-angle).sin();
+        self.plane.y = old_plane_x * (-angle).sin() + self.plane.y * (-angle).cos();
+    }
+
+    /// Face south
+    pub fn face_west(&mut self) {
+
+        self.dir.x = -1.0;
+        self.dir.y = -0.0;
+
+        self.plane.x = 0.0;
+        self.plane.y = 0.66;
+    }
+
     /// Set the position
-    pub fn set_pos(&mut self, x: i32, y: i32) {
-        self.pos.x = x as f32;
-        self.pos.y = y as f32;
+    pub fn set_pos(&mut self, x: f32, y: f32) {
+        self.pos.x = x;
+        self.pos.y = y;
     }
 
     /// Set the animation time in ms

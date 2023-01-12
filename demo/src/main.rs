@@ -142,9 +142,9 @@ fn main() -> Result<(), Error> {
         }
     }
 
-    world.set_ceiling_tile(Tile::textured(image_id, calc_tile_rect(9, 4, 24)));
+    world.set_default_ceiling(Tile::textured(image_id, calc_tile_rect(9, 4, 24)));
     //world.set_ceiling_tile(Tile::colored([100, 100, 100, 255]));
-    world.set_floor_tile(Tile::textured(image_id, calc_tile_rect(21, 14, 24)));
+    world.set_default_floor(Tile::textured(image_id, calc_tile_rect(21, 14, 24)));
     // world.set_floor_tile(Tile::colored([50, 50, 50, 255]));
 
     // Fog
@@ -167,7 +167,7 @@ fn main() -> Result<(), Error> {
     caster.set_anim_time(160);
 
     // Set the player position
-    caster.set_pos(9, 7);
+    caster.set_pos(9.0, 7.0);
 
     // Set up the game loop
 

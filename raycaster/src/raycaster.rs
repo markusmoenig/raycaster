@@ -847,17 +847,19 @@ impl Raycaster {
             }
         });
 
+        let hh = frame.len() / (in_stride as usize * 4);
+
         // Copy the buffer into the frame 90 degrees rotated
         frame
             .par_rchunks_exact_mut(in_stride as usize * 4)
             .enumerate()
-            .for_each(|(y, line)| {
+            .for_each(|(dy, line)| {
+                let y = hh- dy;
                 if y >= in_rect.1 && y < in_rect.1 + in_rect.3 {
                     let ry = y - in_rect.1;
                     for x in 0..rect.2 {
                         let off = (in_rect.0 + x) * 4;
-
-                        let buffer_off = (rect.3 - ry - 1) * 4 + (rect.2 - x - 1) * 4 * stride;
+                        let buffer_off = ry * 4 + (rect.2 - x - 1) * 4 * stride;
                         line[off..off+4].copy_from_slice(&buffer[buffer_off..buffer_off+4]);
                     }
                 }
@@ -922,6 +924,20 @@ impl Raycaster {
         let old_plane_x = self.plane.x;
         self.plane.x = self.plane.x * (-self.rot_speed).cos() - self.plane.y * (-self.rot_speed).sin();
         self.plane.y = old_plane_x * (-self.rot_speed).sin() + self.plane.y * (-self.rot_speed).cos();
+    }
+
+    /// Turn left
+    pub fn turn_by(&mut self, angle: f32) {
+
+        let angle = angle * std::f32::consts::PI / 180.0;
+
+        let old_dir_x = self.dir.x;
+        self.dir.x = self.dir.x * angle.cos() - self.dir.y * angle.sin();
+        self.dir.y = old_dir_x * angle.sin() + self.dir.y * angle.cos();
+
+        let old_plane_x = self.plane.x;
+        self.plane.x = self.plane.x * angle.cos() - self.plane.y * angle.sin();
+        self.plane.y = old_plane_x * angle.sin() + self.plane.y * angle.cos();
     }
 
     /// Face north

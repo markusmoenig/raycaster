@@ -1,6 +1,6 @@
 [package]
 name = "raycaster"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 authors = ["Markus Moenig"]
 description = "A multi-threaded raycaster engine for creating game graphics similar to Wolfenstein3D"
